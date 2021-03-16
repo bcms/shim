@@ -1,11 +1,28 @@
 import * as os from 'os';
 import { SecurityObject, SecurityService } from './security';
 import { General, Http } from '../util';
-import type { InstanceServerStats } from '../types';
+import type {
+  BCMSConfig,
+  InstanceServerStats,
+  UserProtected,
+} from '../types';
 import { Logger } from '@becomes/purple-cheetah';
 
 export interface ConnectionServicePrototype {
-  isRegistered(instanceId: string);
+  isConnected(instanceId: string): boolean;
+  getBCMSConfig(instanceId: string): Promise<BCMSConfig>;
+  log(instanceId: string, message: string): Promise<void>;
+  canAccessPlugin(
+    instanceId: string,
+    pluginHash: string,
+  ): Promise<boolean>;
+  loginUser(
+    instanceId: string,
+    cred: {
+      email: string;
+      password: string;
+    },
+  ): Promise<UserProtected>;
 }
 export interface Connection {
   connected: boolean;
@@ -44,11 +61,17 @@ function connectionService() {
                 'register',
                 `Instance "${instanceId}" failed to register to the cloud.`,
               );
-              connections[instanceId].registerAfter = Date.now() + 10000;
+              connections[instanceId].registerAfter =
+                Date.now() + 10000;
             }
           }
         } else {
-          if (!(await sendStats(instanceId, connections[instanceId].channel))) {
+          if (
+            !(await sendStats(
+              instanceId,
+              connections[instanceId].channel,
+            ))
+          ) {
             logger.warn(
               'connection',
               `Connection failed for "${instanceId}".`,
@@ -88,7 +111,10 @@ function connectionService() {
       },
     });
     if (response.status !== 200) {
-      logger.warn('register', response.status);
+      logger.warn(
+        'register',
+        `${response.status} - ${(response.data as any).message}`,
+      );
       return false;
     }
     const resObj: {
@@ -111,7 +137,10 @@ function connectionService() {
       },
     });
     if (response.status !== 200) {
-      logger.warn('register', response.status);
+      logger.warn(
+        'register',
+        `${response.status} - ${(response.data as any).message}`,
+      );
       return false;
     }
     const resObj: {
