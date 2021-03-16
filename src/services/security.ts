@@ -1,5 +1,10 @@
+import * as fs from 'fs';
+import * as util from 'util';
+import * as path from 'path';
 import * as crypto from 'crypto';
-import { General } from './general';
+import { General } from '../util';
+import type { LicenseServicePrototype } from './license';
+import { LicenseService } from './license';
 
 export interface SecurityObject {
   /** Encryption index */
@@ -20,19 +25,17 @@ export interface SecurityObjectMessage<T> {
   /** Message signature */
   sig: string;
 }
-export interface SecurityPrototype {
+export interface SecurityServicePrototype {
+  init(): Promise<void>;
   letchNonce(nonce: string, ts: number): void;
   isNonceLatched(nonce: string, ts: number): boolean;
-  enc<T>(payload: T): SecurityObject;
-  dec<T>(obj: SecurityObject): T;
+  enc<T>(instanceId: string, payload: T): SecurityObject;
+  dec<T>(instanceId: string, obj: SecurityObject): T;
+  license(): LicenseServicePrototype;
 }
 
-export function Security(
-  license?: Array<{
-    str: string;
-    buf: Buffer;
-  }>,
-) {
+function securityService() {
+  let licenseService: LicenseServicePrototype;
   const NCS: Array<{
     expAt: number;
     nc: string;
@@ -60,7 +63,28 @@ export function Security(
       }
     }
   }, 1000);
-  const self: SecurityPrototype = {
+  const self: SecurityServicePrototype = {
+    async init() {
+      if (
+        !(await util.promisify(fs.exists)(
+          path.join(process.cwd(), 'licenses'),
+        ))
+      ) {
+        throw Error('licenses directory does not exist!');
+      }
+      const licenseFiles = await util.promisify(fs.readdir)(
+        path.join(process.cwd(), 'licenses'),
+      );
+      licenseService = LicenseService();
+      for (let i = 0; i < licenseFiles.length; i++) {
+        const licenseRaw = (
+          await util.promisify(fs.readFile)(
+            path.join(process.cwd(), 'licenses', licenseFiles[i]),
+          )
+        ).toString();
+        licenseService.add(licenseFiles[i], licenseRaw);
+      }
+    },
     letchNonce(nc, ts: number) {
       NCS.push({
         nc,
@@ -71,11 +95,17 @@ export function Security(
     isNonceLatched(nc, ts) {
       return !!NCS.find((e) => e.nc === nc && ts === ts);
     },
-    enc(payload) {
+    enc(instanceId, payload) {
+      const license = licenseService.get(instanceId);
+      if (!license) {
+        throw Error(
+          `License for instance "${instanceId}" does not exist.`,
+        );
+      }
       const obj: SecurityObject = {
-        ei: General.randomNumber(0, license.length - 1),
-        ivi: General.randomNumber(0, license.length - 1),
-        si: General.randomNumber(0, license.length - 1),
+        ei: General.randomNumber(0, license.list.length - 1),
+        ivi: General.randomNumber(0, license.list.length - 1),
+        si: General.randomNumber(0, license.list.length - 1),
         msg: '',
       };
       let encMsg = '';
@@ -86,13 +116,13 @@ export function Security(
         ts: Date.now(),
       };
       msg.sig = crypto
-        .createHmac('sha256', license[obj.si].buf)
+        .createHmac('sha256', license.list[obj.si].buf)
         .update(msg.nc + msg.ts + JSON.stringify(msg.pl))
         .digest('hex');
       const cipher = crypto.createCipheriv(
         'aes-256-gcm',
-        license[obj.ei].buf,
-        license[obj.ivi].buf,
+        license.list[obj.ei].buf,
+        license.list[obj.ivi].buf,
       );
       encMsg = cipher.update(JSON.stringify(msg), 'utf8', 'hex');
       encMsg += cipher.final('hex');
@@ -100,15 +130,25 @@ export function Security(
       cipher.destroy();
       return obj;
     },
-    dec<T>(obj) {
+    dec<T>(instanceId, obj) {
+      const license = licenseService.get(instanceId);
+      if (!license) {
+        throw Error(
+          `License for instance "${instanceId}" does not exist.`,
+        );
+      }
       let decMsg = '';
-      if (!license[obj.ivi] || !license[obj.ei] || !license[obj.si]) {
+      if (
+        !license.list[obj.ivi] ||
+        !license.list[obj.ei] ||
+        !license.list[obj.si]
+      ) {
         throw Error('Invalid indexes.');
       }
       const decipher = crypto.createDecipheriv(
         'aes-256-gcm',
-        license[obj.ei].buf,
-        license[obj.ivi].buf,
+        license.list[obj.ei].buf,
+        license.list[obj.ivi].buf,
       );
       decMsg = decipher.update(obj.msg, 'hex', 'utf8');
       let msg: SecurityObjectMessage<T>;
@@ -127,7 +167,7 @@ export function Security(
         throw Error('Blocked nonce.');
       }
       const sig = crypto
-        .createHmac('sha256', license[obj.si].buf)
+        .createHmac('sha256', license.list[obj.si].buf)
         .update(msg.nc + msg.ts + JSON.stringify(msg.pl))
         .digest('hex');
       if (sig !== msg.sig) {
@@ -136,6 +176,11 @@ export function Security(
       decipher.destroy();
       return msg.pl;
     },
+    license() {
+      return licenseService;
+    },
   };
   return self;
 }
+
+export const SecurityService = securityService();

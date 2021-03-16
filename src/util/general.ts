@@ -1,3 +1,5 @@
+import * as os from 'os';
+
 export const General = {
   string: {
     getTextBetween(src: string, begin: string, end: string) {
@@ -42,6 +44,37 @@ export const General = {
         );
       }
       return output;
+    },
+  },
+  cpu: {
+    average(): { total: number; idle: number } {
+      let totalIdle = 0,
+        totalTick = 0;
+      let cpus = os.cpus();
+      for (let i = 0, len = cpus.length; i < len; i++) {
+        const cpu = cpus[i];
+        for (const type in cpu.times) {
+          totalTick += cpu.times[type];
+        }
+        totalIdle += cpu.times.idle;
+      }
+      return {
+        idle: totalIdle / cpus.length,
+        total: totalTick / cpus.length,
+      };
+    },
+    async usage(): Promise<number> {
+      return new Promise<number>((resolve) => {
+        const startMeasure = General.cpu.average();
+        setTimeout(() => {
+          const endMeasure = General.cpu.average();
+          const idleDifference = endMeasure.idle - startMeasure.idle;
+          const totalDifference =
+            endMeasure.total - startMeasure.total;
+
+          resolve(100 - ~~((100 * idleDifference) / totalDifference));
+        }, 100);
+      });
     },
   },
   randomNumber(min: number, max: number) {
