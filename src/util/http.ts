@@ -16,11 +16,11 @@ export interface HttpResponse<T> {
   data: T;
   headers: http.IncomingHttpHeaders;
 }
-export interface HttpError {
+export interface HttpResponseError {
   status: number;
   headers: http.IncomingHttpHeaders;
   data: unknown;
-  err: Error;
+  err: Error | http.IncomingMessage;
 }
 
 export class Http {
@@ -73,7 +73,7 @@ export class Http {
           rawData += chunk;
         });
         res.on('error', (err) => {
-          const output: HttpError = {
+          const output: HttpResponseError = {
             status: res.statusCode,
             err,
             headers: res.headers,
@@ -83,8 +83,22 @@ export class Http {
                 : rawData,
           };
           reject(output);
+          return;
         });
         res.on('end', () => {
+          if (res.statusCode !== 200) {
+            const output: HttpResponseError = {
+              status: res.statusCode,
+              err: res,
+              headers: res.headers,
+              data:
+                res.headers['content-type'] === 'application/json'
+                  ? JSON.parse(rawData)
+                  : rawData,
+            };
+            reject(output);
+            return;
+          }
           resolve({
             status: res.statusCode,
             headers: res.headers,

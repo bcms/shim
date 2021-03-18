@@ -3,9 +3,11 @@
   <component name="ChangeListManager">
     <list default="true" id="4533b909-d8f2-453e-b3cd-259df1c36edd" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/app.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/services/connection.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/services/connection.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/instance.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/instance.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/services/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/services/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/cloud/user.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/cloud/user.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/util/http.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/util/http.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,7 +37,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../backend" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_package_manager_path" value="npm" />
     <property name="prettierjs.PrettierConfiguration.Package" value="$PROJECT_DIR$/node_modules/prettier" />
     <property name="ts.external.directory.path" value="$PROJECT_DIR$/node_modules/typescript/lib" />
@@ -56,7 +58,9 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1615882983033</updated>
-      <workItem from="1615882984700" duration="16534000" />
+      <workItem from="1615882984700" duration="16569000" />
+      <workItem from="1615967904397" duration="24000" />
+      <workItem from="1616066925791" duration="10840000" />
     </task>
     <servers />
   </component>
@@ -73,5 +77,6 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
 </project>

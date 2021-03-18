@@ -1,28 +1,34 @@
 import * as os from 'os';
 import { SecurityObject, SecurityService } from './security';
 import { General, Http } from '../util';
-import type {
-  BCMSConfig,
-  InstanceServerStats,
-  UserProtected,
-} from '../types';
-import { Logger } from '@becomes/purple-cheetah';
+import type { InstanceServerStats } from '../types';
+import {
+  HttpError,
+  HttpStatus,
+  Logger,
+} from '@becomes/purple-cheetah';
 
 export interface ConnectionServicePrototype {
-  isConnected(instanceId: string): boolean;
-  getBCMSConfig(instanceId: string): Promise<BCMSConfig>;
-  log(instanceId: string, message: string): Promise<void>;
-  canAccessPlugin(
+  send<T>(
     instanceId: string,
-    pluginHash: string,
-  ): Promise<boolean>;
-  loginUser(
-    instanceId: string,
-    cred: {
-      email: string;
-      password: string;
-    },
-  ): Promise<UserProtected>;
+    uri: string,
+    payload: unknown,
+    error?: HttpError,
+  ): Promise<T>;
+  // isConnected(instanceId: string): boolean;
+  // getBCMSConfig(instanceId: string): Promise<BCMSConfig>;
+  // log(instanceId: string, message: string): Promise<void>;
+  // canAccessPlugin(
+  //   instanceId: string,
+  //   pluginHash: string,
+  // ): Promise<boolean>;
+  // loginUser(
+  //   instanceId: string,
+  //   cred: {
+  //     email: string;
+  //     password: string;
+  //   },
+  // ): Promise<UserProtected>;
 }
 export interface Connection {
   connected: boolean;
@@ -148,6 +154,42 @@ function connectionService() {
     } = SecurityService.dec(instanceId, response.data);
     return !!resObj.ok;
   }
+
+  const self: ConnectionServicePrototype = {
+    async send(instanceId, uri, payload, error) {
+      const connection = connections[instanceId];
+      if (!connection) {
+        if (error) {
+          throw error.occurred(
+            HttpStatus.FORBIDDEN,
+            'Instance in not connected.',
+          );
+        }
+        throw Error('Instance is not connected.');
+      }
+      try {
+        const response = await http.send<SecurityObject>({
+          path: `/conn/${connection.channel}${uri}`,
+          method: 'POST',
+          data: SecurityService.enc(instanceId, payload),
+          headers: {
+            iid: instanceId,
+          },
+        });
+        return SecurityService.dec(instanceId, response.data);
+      } catch (e) {
+        logger.error('send', e);
+        if (error) {
+          throw error.occurred(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            'Failed to send a request.',
+          );
+        }
+        throw Error('Failed to send a request.');
+      }
+    },
+  };
+  return self;
 }
 
 export const ConnectionService = connectionService();
