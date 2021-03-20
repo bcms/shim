@@ -108,11 +108,11 @@ const bundle = async () => {
       },
     },
     {
-      title: 'Copy BCMS-LICENSE',
+      title: 'Copy 604f489af0db82500f17076d',
       task: async () => {
         await util.promisify(fs.copyFile)(
-          path.join(__dirname, 'BCMS-LICENSE'),
-          path.join(__dirname, 'dist', 'BCMS-LICENSE'),
+          path.join(__dirname, '604f489af0db82500f17076d'),
+          path.join(__dirname, 'dist', '604f489af0db82500f17076d'),
         );
       },
     },

@@ -5,6 +5,7 @@
 /typedoc
 .env
 /db.json
+/licenses
 
 # Logs
 logs
