@@ -6,6 +6,7 @@
 .env
 /db.json
 /licenses
+/.idea
 
 # Logs
 logs
