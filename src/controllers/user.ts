@@ -53,7 +53,7 @@ export class ShimInstanceUserController
       instanceId,
       '/user/verify/otp',
       {
-        email: request.body.otp,
+        otp: request.body.otp,
       },
       error,
     );
