@@ -38,7 +38,7 @@ export interface Connection {
 
 function connectionService() {
   const logger = new Logger('ShimConnectionService');
-  const http = new Http('ua728al.becomes.co', '443', '/api/v1/shim');
+  const http = new Http('192.168.1.66', '8080', '/api/v1/shim');
   const connections: { [instanceId: string]: Connection } = {};
 
   setInterval(async () => {
@@ -106,53 +106,65 @@ function connectionService() {
     };
   }
   async function register(instanceId: string): Promise<boolean> {
-    const stats = await getStats();
-    const regObj = SecurityService.enc(instanceId, stats);
-    const response = await http.send<SecurityObject>({
-      path: '/register',
-      method: 'POST',
-      data: regObj,
-      headers: {
-        iid: instanceId,
-      },
-    });
-    if (response.status !== 200) {
-      logger.warn(
-        'register',
-        `${response.status} - ${(response.data as any).message}`,
-      );
-      return false;
+    try {
+      const stats = await getStats();
+      const regObj = SecurityService.enc(instanceId, stats);
+      const response = await http.send<SecurityObject>({
+        path: '/register',
+        method: 'POST',
+        data: regObj,
+        headers: {
+          iid: instanceId,
+        },
+      });
+      if (response.status !== 200) {
+        logger.warn(
+          'register',
+          `${response.status} - ${(response.data as any).message}`,
+        );
+        return false;
+      }
+      const resObj: {
+        channel: string;
+      } = SecurityService.dec(instanceId, response.data);
+      connections[instanceId].channel = resObj.channel;
+      return true;
+    } catch (e) {
+      console.error(e);
+      logger.error('register', 'Failed');
     }
-    const resObj: {
-      channel: string;
-    } = SecurityService.dec(instanceId, response.data);
-    connections[instanceId].channel = resObj.channel;
-    return true;
+    return false;
   }
   async function sendStats(
     instanceId: string,
     channel: string,
   ): Promise<boolean> {
-    const stats = await getStats();
-    const response = await http.send<SecurityObject>({
-      path: `/conn/${channel}`,
-      method: 'POST',
-      data: SecurityService.enc(instanceId, stats),
-      headers: {
-        iid: instanceId,
-      },
-    });
-    if (response.status !== 200) {
-      logger.warn(
-        'register',
-        `${response.status} - ${(response.data as any).message}`,
-      );
-      return false;
+    try {
+      const stats = await getStats();
+      const response = await http.send<SecurityObject>({
+        path: `/conn/${channel}`,
+        method: 'POST',
+        data: SecurityService.enc(instanceId, stats),
+        headers: {
+          iid: instanceId,
+        },
+      });
+      if (response.status !== 200) {
+        logger.warn(
+          'register',
+          `${response.status} - ${(response.data as any).message}`,
+        );
+        return false;
+      }
+      const resObj: {
+        ok: string;
+      } = SecurityService.dec(instanceId, response.data);
+      return !!resObj.ok;
+    } catch (e) {
+      console.error(e);
+      logger.error('sendStats', 'Failed');
     }
-    const resObj: {
-      ok: string;
-    } = SecurityService.dec(instanceId, response.data);
-    return !!resObj.ok;
+    return false;
   }
 
   const self: ConnectionServicePrototype = {
