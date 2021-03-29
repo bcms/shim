@@ -111,6 +111,9 @@ export class Http {
           });
         });
       });
+      request.on('error', (e) => {
+        reject(e);
+      });
       if (typeof data !== 'undefined') {
         request.write(data);
       }

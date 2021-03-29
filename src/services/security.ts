@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { General } from '../util';
 import type { LicenseServicePrototype } from './license';
 import { LicenseService } from './license';
+import { ShimInstanceService } from './instances';
 
 export interface SecurityObject {
   /** Encryption index */
@@ -83,6 +84,7 @@ function securityService() {
           )
         ).toString();
         licenseService.add(licenseFiles[i], licenseRaw);
+        ShimInstanceService.createSecret(licenseFiles[i]);
       }
     },
     letchNonce(nc, ts: number) {

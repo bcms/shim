@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Logger,
 } from '@becomes/purple-cheetah';
+import { ShimInstanceService } from './instances';
 
 export interface ConnectionServicePrototype {
   send<T>(
@@ -38,7 +39,11 @@ export interface Connection {
 
 function connectionService() {
   const logger = new Logger('ShimConnectionService');
-  const http = new Http('192.168.1.66', '8080', '/api/v1/shim');
+  const http =
+    process.env.PROD === 'true'
+      ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
+      : new Http('192.168.1.66', '8080', '/api/v1/shim');
+  const instanceHttp = new Http();
   const connections: { [instanceId: string]: Connection } = {};
 
   setInterval(async () => {
@@ -84,6 +89,13 @@ function connectionService() {
             );
             connections[instanceId].connected = false;
           }
+        }
+        const result = await ShimInstanceService.checkHealth(instanceId);
+        if (!result.ok) {
+          console.log('Instance not available');
+          // TODO: implement a mechanism for starting new instance
+        } else {
+          // TODO: do something with data
         }
       }
     }
