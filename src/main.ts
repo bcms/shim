@@ -6,6 +6,13 @@ const logger = new Logger('BCMSShim');
 let app: App;
 
 async function initialize() {
+  if (process.env.BCMS_LOCAL === 'true') {
+    logger.warn('DEV', {
+      message:
+        'Shim is started with LOCAL DEVELOPMENT FLAG.' +
+        ' Please do not forget to remove this flag in production.',
+    });
+  }
   await SecurityService.init();
   logger.info('initialize', 'Done');
 }

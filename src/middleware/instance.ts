@@ -43,7 +43,7 @@ setInterval(() => {
 
 @Middleware({
   after: false,
-  uri: '/instance',
+  uri: '/shim/instance',
 })
 export class ShimInstanceMiddleware implements MiddlewarePrototype {
   after: boolean;

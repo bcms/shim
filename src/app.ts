@@ -5,10 +5,10 @@ import {
   RequestLoggerMiddleware,
 } from '@becomes/purple-cheetah';
 import { ShimInstanceMiddleware } from './middleware';
-import { ShimInstanceUserController } from './controllers/user';
+import { ShimInstanceUserController } from './controllers';
 
 @Application({
-  port: process.env.PORT ? parseInt(process.env.PORT) : 2070,
+  port: process.env.PORT ? parseInt(process.env.PORT) : 1282,
   controllers: [new ShimInstanceUserController()],
   middleware: [
     new BodyParserMiddleware(),

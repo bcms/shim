@@ -6,7 +6,8 @@
   "types": "./main.d.ts",
   "scripts": {
     "start": "node dist/main.js",
-    "dev": "nodemon src/main.ts",
+    "start:local": "env-cmd -f .env.dev node main.js",
+    "dev": "env-cmd -f .env.dev nodemon src/main.ts",
     "build:ts": "tsc -p .",
     "typedoc": "typedoc",
     "bundle": "node tools.js --bundle",

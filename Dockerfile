@@ -1,7 +1,9 @@
-FROM node:12-slim
+FROM node:14-slim
 
 WORKDIR /app
 
-COPY dist/. /app
+COPY . /app
 
-ENTRYPOINT ["npm", "start"]
+RUN npm i
+
+ENTRYPOINT ["npm", "run", "dev"]

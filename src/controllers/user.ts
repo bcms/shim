@@ -10,8 +10,9 @@ import {
 } from '@becomes/purple-cheetah';
 import { ConnectionService } from '../services';
 import type { ShimInstanceUser } from '../types';
+import { Const } from '../util';
 
-@Controller('/instance/user')
+@Controller('/shim/instance/user')
 export class ShimInstanceUserController
   implements ControllerPrototype {
   router: Router;
@@ -27,8 +28,17 @@ export class ShimInstanceUserController
     ok: boolean;
     user?: ShimInstanceUser;
   }> {
-    const error = HttpErrorFactory.instance('verifyWithOTP', this.logger);
+    const error = HttpErrorFactory.instance(
+      'verifyWithOTP',
+      this.logger,
+    );
     const instanceId = request.headers['bcms-iid'] as string;
+    if (process.env.BCMS_LOCAL === 'true') {
+      return {
+        ok: true,
+        user: Const.dev.user,
+      };
+    }
     return await ConnectionService.send(
       instanceId,
       '/user/verify/otp',
@@ -40,9 +50,16 @@ export class ShimInstanceUserController
   }
 
   @Post('/all')
-  async getAll(request: Request): Promise<{ user: ShimInstanceUser[] }> {
+  async getAll(
+    request: Request,
+  ): Promise<{ user: ShimInstanceUser[] }> {
     const error = HttpErrorFactory.instance('getAll', this.logger);
     const instanceId = request.headers['bcms-iid'] as string;
+    if (process.env.BCMS_LOCAL === 'true') {
+      return {
+        user: [Const.dev.user],
+      };
+    }
     return await ConnectionService.send(
       instanceId,
       '/user/all',
