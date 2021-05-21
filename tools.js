@@ -6,8 +6,8 @@ const path = require('path');
 
 /**
  * @typedef {{
- *  title: string;
- *  task: () => Promise<void>;
+ *  title: string
+ *  task: function(void): string
  * }} Task
  */
 
