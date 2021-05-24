@@ -99,7 +99,7 @@ async function bundle() {
     {
       title: 'Compile Typescript.',
       task: async () => {
-        await spawn('npm', ['run', 'build:ts'])
+        await spawn('npm', ['run', 'build:ts']);
       },
     },
     {
@@ -118,6 +118,24 @@ async function bundle() {
         await util.promisify(fs.writeFile)(
           path.join(__dirname, 'dist', 'package.json'),
           JSON.stringify(data, null, '  '),
+        );
+      },
+    },
+    {
+      title: 'Create local',
+      task: async () => {
+        await fse.copy(
+          path.join(__dirname, 'dist'),
+          path.join(__dirname, 'local-dev-img', 'dist'),
+        );
+        await fse.copy(
+          path.join(__dirname, 'package.json'),
+          path.join(
+            __dirname,
+            'local-dev-img',
+            'dist',
+            'package.json',
+          ),
         );
       },
     },

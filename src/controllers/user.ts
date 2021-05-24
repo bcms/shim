@@ -14,7 +14,8 @@ import { Const } from '../util';
 
 @Controller('/shim/instance/user')
 export class ShimInstanceUserController
-  implements ControllerPrototype {
+  implements ControllerPrototype
+{
   router: Router;
   logger: Logger;
   name: string;
@@ -22,9 +23,7 @@ export class ShimInstanceUserController
   initRouter: () => void;
 
   @Post('/verify/otp')
-  async verifyWithOTP(
-    request: Request,
-  ): Promise<{
+  async verifyWithOTP(request: Request): Promise<{
     ok: boolean;
     user?: ShimInstanceUser;
   }> {

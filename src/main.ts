@@ -19,7 +19,11 @@ async function initialize() {
 initialize()
   .then(() => {
     app = new App();
-    app.listen();
+    app.listen().catch((error) => {
+      console.error(error);
+      logger.error('initialize', error);
+      process.exit(1);
+    });
   })
   .catch((error) => {
     console.error(error);
