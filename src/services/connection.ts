@@ -1,53 +1,29 @@
 import * as os from 'os';
-import { SecurityObject, SecurityService } from './security';
+import { useLogger } from '@becomes/purple-cheetah';
+import { ShimConfig } from '../config';
+import type {
+  Connection,
+  ConnectionService,
+  InstanceServerStats,
+  SecurityObject,
+} from '../types';
 import { General, Http } from '../util';
-import type { InstanceServerStats } from '../types';
-import {
-  HttpError,
-  HttpStatus,
-  Logger,
-} from '@becomes/purple-cheetah';
-import { ShimInstanceService } from './instances';
+import { HTTPStatus } from '@becomes/purple-cheetah/types';
 
-export interface ConnectionServicePrototype {
-  send<T>(
-    instanceId: string,
-    uri: string,
-    payload: unknown,
-    error?: HttpError,
-  ): Promise<T>;
-  // isConnected(instanceId: string): boolean;
-  // getBCMSConfig(instanceId: string): Promise<BCMSConfig>;
-  // log(instanceId: string, message: string): Promise<void>;
-  // canAccessPlugin(
-  //   instanceId: string,
-  //   pluginHash: string,
-  // ): Promise<boolean>;
-  // loginUser(
-  //   instanceId: string,
-  //   cred: {
-  //     email: string;
-  //     password: string;
-  //   },
-  // ): Promise<UserProtected>;
-}
-export interface Connection {
-  connected: boolean;
-  registerAfter: number;
-  channel: string;
-}
-
-function connectionService() {
-  const logger = new Logger('ShimConnectionService');
-  const http =
-    process.env.PROD === 'true'
-      ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
-      : new Http('localhost', '8080', '/api/v1/shim');
-  const instanceHttp = new Http();
+export function createConnectionService(): ConnectionService {
+  const logger = useLogger({ name: 'ShimConnectionService' });
+  const http = !ShimConfig.local
+    ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
+    : new Http(
+        ShimConfig.cloud.domain,
+        ShimConfig.cloud.port,
+        '/api/v1/shim',
+      );
+  // const instanceHttp = new Http();
   const connections: { [instanceId: string]: Connection } = {};
 
   setInterval(async () => {
-    const licenseService = SecurityService.license();
+    const licenseService = ShimConfig.security.license();
     if (licenseService && process.env.BCMS_LOCAL !== 'true') {
       const instanceIds = licenseService.getInstanceIds();
       for (let i = 0; i < instanceIds.length; i++) {
@@ -90,10 +66,11 @@ function connectionService() {
             connections[instanceId].connected = false;
           }
         }
-        const result = await ShimInstanceService.checkHealth(
+        const result = await ShimConfig.instance.checkHealth(
           instanceId,
         );
         if (!result.ok) {
+          // eslint-disable-next-line no-console
           console.log('Instance not available');
           // TODO: implement a mechanism for starting new instance
         } else {
@@ -122,7 +99,7 @@ function connectionService() {
   async function register(instanceId: string): Promise<boolean> {
     try {
       const stats = await getStats();
-      const regObj = SecurityService.enc(instanceId, stats);
+      const regObj = ShimConfig.security.enc(instanceId, stats);
       const response = await http.send<SecurityObject>({
         path: '/register',
         method: 'POST',
@@ -134,16 +111,18 @@ function connectionService() {
       if (response.status !== 200) {
         logger.warn(
           'register',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           `${response.status} - ${(response.data as any).message}`,
         );
         return false;
       }
       const resObj: {
         channel: string;
-      } = SecurityService.dec(instanceId, response.data);
+      } = ShimConfig.security.dec(instanceId, response.data);
       connections[instanceId].channel = resObj.channel;
       return true;
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       logger.error('register', 'Failed');
     }
@@ -158,7 +137,7 @@ function connectionService() {
       const response = await http.send<SecurityObject>({
         path: `/conn/${channel}`,
         method: 'POST',
-        data: SecurityService.enc(instanceId, stats),
+        data: ShimConfig.security.enc(instanceId, stats),
         headers: {
           iid: instanceId,
         },
@@ -166,28 +145,30 @@ function connectionService() {
       if (response.status !== 200) {
         logger.warn(
           'register',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           `${response.status} - ${(response.data as any).message}`,
         );
         return false;
       }
       const resObj: {
         ok: string;
-      } = SecurityService.dec(instanceId, response.data);
+      } = ShimConfig.security.dec(instanceId, response.data);
       return !!resObj.ok;
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       logger.error('sendStats', 'Failed');
     }
     return false;
   }
 
-  const self: ConnectionServicePrototype = {
+  const self: ConnectionService = {
     async send(instanceId, uri, payload, error) {
       const connection = connections[instanceId];
       if (!connection) {
         if (error) {
           throw error.occurred(
-            HttpStatus.FORBIDDEN,
+            HTTPStatus.FORBIDDEN,
             'Instance in not connected.',
           );
         }
@@ -197,17 +178,17 @@ function connectionService() {
         const response = await http.send<SecurityObject>({
           path: `/conn/${connection.channel}${uri}`,
           method: 'POST',
-          data: SecurityService.enc(instanceId, payload),
+          data: ShimConfig.security.enc(instanceId, payload),
           headers: {
             iid: instanceId,
           },
         });
-        return SecurityService.dec(instanceId, response.data);
+        return ShimConfig.security.dec(instanceId, response.data);
       } catch (e) {
         logger.error('send', e);
         if (error) {
           throw error.occurred(
-            HttpStatus.INTERNAL_SERVER_ERROR,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
             'Failed to send a request.',
           );
         }
@@ -217,5 +198,3 @@ function connectionService() {
   };
   return self;
 }
-
-export const ConnectionService = connectionService();

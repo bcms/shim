@@ -1,9 +1,16 @@
-import type { Role, RoleName } from '@becomes/purple-cheetah';
+import type { JWTRole, JWTRoleName } from "@becomes/purple-cheetah-mod-jwt/types";
 
 export interface ShimInstanceUserOrg {
   id: string;
-  role: RoleName;
+  nameEncoded: string;
+  role: JWTRoleName;
   owner: boolean;
+}
+
+export interface ShimInstanceUserPersonal {
+  firstName: string;
+  lastName: string;
+  avatarUri: string;
 }
 
 export interface ShimInstanceUser {
@@ -11,9 +18,8 @@ export interface ShimInstanceUser {
   createdAt: number;
   updatedAt: number;
   username: string;
-  firstName: string;
-  lastName: string;
   email: string;
-  organizations: ShimInstanceUserOrg[];
-  roles: Role[];
+  personal: ShimInstanceUserPersonal
+  orgs: ShimInstanceUserOrg[];
+  roles: JWTRole[];
 }

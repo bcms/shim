@@ -30,11 +30,11 @@ export class Http {
     private basePath?: string,
   ) {}
 
-  setHost(host: { name?: string; port?: string }) {
+  setHost(host: { name?: string; port?: string }): void {
     this.host = host.name;
     this.port = host.port;
   }
-  setBasePath(basePath?: string) {
+  setBasePath(basePath?: string): void {
     this.basePath = basePath;
   }
   async send<T>(config: HttpConfig): Promise<HttpResponse<T>> {

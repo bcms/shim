@@ -1,5 +1,5 @@
+import { JWTPermissionName, JWTRoleName } from '@becomes/purple-cheetah-mod-jwt/types';
 import type { ShimInstanceUser } from '../types';
-import { PermissionName, RoleName } from '@becomes/purple-cheetah';
 
 export const Const: {
   dev: {
@@ -18,19 +18,19 @@ export const Const: {
       organizations: [],
       roles: [
         {
-          name: RoleName.ADMIN,
+          name: JWTRoleName.ADMIN,
           permissions: [
             {
-              name: PermissionName.WRITE,
+              name: JWTPermissionName.WRITE,
             },
             {
-              name: PermissionName.READ,
+              name: JWTPermissionName.READ,
             },
             {
-              name: PermissionName.DELETE,
+              name: JWTPermissionName.DELETE,
             },
             {
-              name: PermissionName.EXECUTE,
+              name: JWTPermissionName.EXECUTE,
             },
           ],
         },

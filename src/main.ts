@@ -1,34 +1,35 @@
-import { Logger } from '@becomes/purple-cheetah';
-import { App } from './app';
-import { SecurityService } from './services';
+import { createPurpleCheetah } from '@becomes/purple-cheetah';
+import { ShimConfig } from './config';
+import { PluginController, UserController } from './controllers';
+import { ShimInstanceMiddleware } from './middleware';
+import {
+  createConnectionService,
+  createSecurityService,
+  createShimInstanceService,
+} from './services';
 
-const logger = new Logger('BCMSShim');
-let app: App;
-
-async function initialize() {
-  if (process.env.BCMS_LOCAL === 'true') {
-    logger.warn('DEV', {
+async function main() {
+  if (ShimConfig.local) {
+    // eslint-disable-next-line no-console
+    console.warn('DEV', {
       message:
         'Shim is started with LOCAL DEVELOPMENT FLAG.' +
         ' Please do not forget to remove this flag in production.',
     });
   }
-  await SecurityService.init();
-  logger.info('initialize', 'Done');
-}
-initialize()
-  .then(() => {
-    app = new App();
-    app.listen().catch((error) => {
-      console.error(error);
-      logger.error('initialize', error);
-      process.exit(1);
-    });
-  })
-  .catch((error) => {
-    console.error(error);
-    logger.error('initialize', error);
-    process.exit(1);
+  createPurpleCheetah({
+    port: process.env.PORT ? parseInt(process.env.PORT) : 1282,
+    controllers: [UserController, PluginController],
+    middleware: [ShimInstanceMiddleware],
+    onReady() {
+      ShimConfig.instance = createShimInstanceService();
+      ShimConfig.security = createSecurityService();
+      ShimConfig.connection = createConnectionService();
+    },
   });
-
-export const Application = app;
+}
+main().catch((error) => {
+  // eslint-disable-next-line no-console
+  console.error(error);
+  process.exit(1);
+});

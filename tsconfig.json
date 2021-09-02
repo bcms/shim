@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "target": "ESNext",
     "outDir": "./dist",
-    "baseUrl": "./",
+    "rootDir": "./src",
     "incremental": true,
     "importsNotUsedAsValues": "error"
   },

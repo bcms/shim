@@ -1,38 +1,26 @@
 import {
-  Controller,
-  ControllerPrototype,
-  HttpErrorFactory,
-  Logger,
-  Post,
+  createController,
+  createControllerMethod,
 } from '@becomes/purple-cheetah';
-import type { Router } from 'express';
+import { ShimConfig } from '../config';
 
-@Controller('/shim/instance/plugin')
-export class ShimInstancePluginController implements ControllerPrototype {
-  router: Router;
-  logger: Logger;
-  name: string;
-  baseUri: string;
-  initRouter: () => void;
-
-  @Post('/verify/:name')
-  async verifyPluginName(): Promise<{
-    ok: boolean;
-  }> {
-    const error = HttpErrorFactory.instance(
-      'verifyPluginName',
-      this.logger,
-    );
-    if (process.env.BCMS_LOCAL) {
-      return {
-        ok: true,
-      };
-    }
-    /**
-     * TODO: Ask the Cloud
-     *
-     * Get the local plugin license. If license does not exist,
-     * return false, other vise, ask the Cloud and pass response.
-     */
-  }
-}
+export const PluginController = createController({
+  path: '/shim/instance/plugin',
+  name: 'Plugin controller',
+  methods() {
+    return {
+      verify: createControllerMethod<unknown, { ok: boolean }>({
+        path: '/verify/:name',
+        type: 'post',
+        async handler() {
+          if (ShimConfig.local) {
+            return {
+              ok: true,
+            };
+          }
+          return { ok: false };
+        },
+      }),
+    };
+  },
+});

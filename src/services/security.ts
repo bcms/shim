@@ -1,42 +1,18 @@
-import * as fs from 'fs';
-import * as util from 'util';
-import * as path from 'path';
 import * as crypto from 'crypto';
+import * as path from 'path';
+import { useFS } from '@becomes/purple-cheetah';
+import type {
+  LicenseService,
+  SecurityObject,
+  SecurityObjectMessage,
+  SecurityService,
+} from '../types';
+import { createLicenseService } from './license';
 import { General } from '../util';
-import type { LicenseServicePrototype } from './license';
-import { LicenseService } from './license';
-import { ShimInstanceService } from './instances';
+import { ShimConfig } from '../config';
 
-export interface SecurityObject {
-  /** Encryption index */
-  ei: number;
-  /** Signature index */
-  si: number;
-  /** Initial vector index */
-  ivi: number;
-  msg: string;
-}
-export interface SecurityObjectMessage<T> {
-  /** Message payload */
-  pl: T;
-  /** Message nonce */
-  nc: string;
-  /** Message timestamp */
-  ts: number;
-  /** Message signature */
-  sig: string;
-}
-export interface SecurityServicePrototype {
-  init(): Promise<void>;
-  letchNonce(nonce: string, ts: number): void;
-  isNonceLatched(nonce: string, ts: number): boolean;
-  enc<T>(instanceId: string, payload: T): SecurityObject;
-  dec<T>(instanceId: string, obj: SecurityObject): T;
-  license(): LicenseServicePrototype;
-}
-
-function securityService() {
-  let licenseService: LicenseServicePrototype;
+export function createSecurityService(): SecurityService {
+  let licenseService: LicenseService;
   const NCS: Array<{
     expAt: number;
     nc: string;
@@ -64,27 +40,30 @@ function securityService() {
       }
     }
   }, 1000);
-  const self: SecurityServicePrototype = {
+  const fs = useFS();
+
+  const self: SecurityService = {
     async init() {
-      if (
-        !(await util.promisify(fs.exists)(
-          path.join(process.cwd(), 'licenses'),
-        ))
-      ) {
+      if (!(await fs.exist(path.join(process.cwd(), 'licenses')))) {
         throw Error('licenses directory does not exist!');
       }
-      const licenseFiles = await util.promisify(fs.readdir)(
+      const licenseFiles = await fs.readdir(
         path.join(process.cwd(), 'licenses'),
       );
-      licenseService = LicenseService();
+      licenseService = createLicenseService();
       for (let i = 0; i < licenseFiles.length; i++) {
-        const licenseRaw = (
-          await util.promisify(fs.readFile)(
-            path.join(process.cwd(), 'licenses', licenseFiles[i]),
-          )
-        ).toString();
-        licenseService.add(licenseFiles[i], licenseRaw);
-        ShimInstanceService.createSecret(licenseFiles[i]);
+        if (licenseFiles[i].endsWith('.license')) {
+          const licenseRaw = (
+            await fs.read(
+              path.join(process.cwd(), 'licenses', licenseFiles[i]),
+            )
+          ).toString();
+          licenseService.add(
+            licenseFiles[i].split('.')[0],
+            licenseRaw,
+          );
+          ShimConfig.instance.createSecret(licenseFiles[i]);
+        }
       }
     },
     letchNonce(nc, ts: number) {
@@ -184,5 +163,3 @@ function securityService() {
   };
   return self;
 }
-
-export const SecurityService = securityService();

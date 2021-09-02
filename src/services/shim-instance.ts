@@ -1,19 +1,8 @@
 import * as crypto from 'crypto';
+import type { ShimInstanceService } from '../types';
 import { Http } from '../util';
 
-export interface ShimInstanceServicePrototype {
-  createSecret(instanceId: string): string;
-  getSecret(instanceId: string): string;
-  checkHealth(
-    instanceId: string,
-  ): Promise<{
-    ok: boolean;
-    heepAvailable?: number;
-    heepUsed?: number;
-  }>;
-}
-
-function shimInstanceService() {
+export function createShimInstanceService(): ShimInstanceService {
   let port = 1280;
   const http = new Http();
   const secrets: {
@@ -23,7 +12,7 @@ function shimInstanceService() {
     };
   } = {};
 
-  const self: ShimInstanceServicePrototype = {
+  const self: ShimInstanceService = {
     createSecret(instanceId) {
       secrets[instanceId] = {
         secret: crypto.randomBytes(32).toString('base64'),
@@ -80,5 +69,3 @@ function shimInstanceService() {
   };
   return self;
 }
-
-export const ShimInstanceService = shimInstanceService();

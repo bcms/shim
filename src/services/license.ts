@@ -1,32 +1,24 @@
+import type {
+  License,
+  LicenseService as LicenseServiceType,
+} from '../types';
 import { General } from '../util';
 
-export interface License {
-  list: Array<{
-    buf: Buffer;
-    str: string;
-  }>;
-}
-export interface LicenseServicePrototype {
-  add(instanceId: string, license: string): void;
-  remove(instanceId: string): void;
-  get(instanceId: string): License;
-  getInstanceIds(): string[];
-}
-
-export function LicenseService() {
+export function createLicenseService(): LicenseServiceType {
   const licenses: { [instanceId: string]: License } = {};
-  const self: LicenseServicePrototype = {
+
+  return {
     getInstanceIds() {
       return Object.keys(licenses);
     },
     add(instanceId, license) {
       const licenseCore = General.string.getTextBetween(
         license,
-        '---- BEGIN LICENSE ----\n',
-        '\n---- END LICENSE ----',
+        '---- BEGIN BCMS LICENSE ----\n',
+        '\n---- END BCMS LICENSE ----',
       );
       const licenseParts: string[] = licenseCore.split('\n');
-      if (licenseParts.length !== 10) {
+      if (licenseParts.length !== 20) {
         throw Error('Invalid license length.');
       }
       licenses[instanceId] = {
@@ -42,5 +34,4 @@ export function LicenseService() {
       return licenses[instanceId];
     },
   };
-  return self;
 }

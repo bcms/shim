@@ -1,69 +1,62 @@
-import type { Request, Router } from 'express';
-import type {
-  ControllerPrototype,
-  Logger,
-} from '@becomes/purple-cheetah';
 import {
-  Controller,
-  HttpErrorFactory,
-  Post,
+  createController,
+  createControllerMethod,
 } from '@becomes/purple-cheetah';
-import { ConnectionService } from '../services';
+import { ShimConfig } from '../config';
 import type { ShimInstanceUser } from '../types';
 import { Const } from '../util';
 
-@Controller('/shim/instance/user')
-export class ShimInstanceUserController
-  implements ControllerPrototype
-{
-  router: Router;
-  logger: Logger;
-  name: string;
-  baseUri: string;
-  initRouter: () => void;
+export const UserController = createController({
+  path: '/shim/instance/user',
+  name: 'User controller',
+  methods() {
+    return {
+      verifyWithOtp: createControllerMethod<
+        unknown,
+        { ok: boolean; user?: ShimInstanceUser }
+      >({
+        path: '/verify/otp',
+        type: 'post',
+        async handler({ errorHandler, request }) {
+          const instanceId = request.headers['x-bcms-iid'] as string;
+          if (ShimConfig.local) {
+            return {
+              ok: true,
+              user: Const.dev.user,
+            };
+          }
+          return await ShimConfig.connection.send(
+            instanceId,
+            '/user/verify/otp',
+            {
+              otp: request.body.otp,
+            },
+            errorHandler,
+          );
+        },
+      }),
 
-  @Post('/verify/otp')
-  async verifyWithOTP(request: Request): Promise<{
-    ok: boolean;
-    user?: ShimInstanceUser;
-  }> {
-    const error = HttpErrorFactory.instance(
-      'verifyWithOTP',
-      this.logger,
-    );
-    const instanceId = request.headers['bcms-iid'] as string;
-    if (process.env.BCMS_LOCAL === 'true') {
-      return {
-        ok: true,
-        user: Const.dev.user,
-      };
-    }
-    return await ConnectionService.send(
-      instanceId,
-      '/user/verify/otp',
-      {
-        otp: request.body.otp,
-      },
-      error,
-    );
-  }
-
-  @Post('/all')
-  async getAll(
-    request: Request,
-  ): Promise<{ user: ShimInstanceUser[] }> {
-    const error = HttpErrorFactory.instance('getAll', this.logger);
-    const instanceId = request.headers['bcms-iid'] as string;
-    if (process.env.BCMS_LOCAL === 'true') {
-      return {
-        user: [Const.dev.user],
-      };
-    }
-    return await ConnectionService.send(
-      instanceId,
-      '/user/all',
-      {},
-      error,
-    );
-  }
-}
+      getAll: createControllerMethod<
+        unknown,
+        { user: ShimInstanceUser[] }
+      >({
+        path: '/all',
+        type: 'post',
+        async handler({ errorHandler, request }) {
+          const instanceId = request.headers['x-bcms-iid'] as string;
+          if (process.env.BCMS_LOCAL === 'true') {
+            return {
+              user: [Const.dev.user],
+            };
+          }
+          return await ShimConfig.connection.send(
+            instanceId,
+            '/user/all',
+            {},
+            errorHandler,
+          );
+        },
+      }),
+    };
+  },
+});
