@@ -25,6 +25,7 @@ async function main() {
       ShimConfig.instance = createShimInstanceService();
       ShimConfig.security = createSecurityService();
       ShimConfig.connection = createConnectionService();
+      ShimConfig.security.init();
     },
   });
 }

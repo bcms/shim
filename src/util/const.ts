@@ -9,13 +9,16 @@ export const Const: {
   dev: {
     user: {
       _id: '111111111111111111111111',
-      username: 'Dev User',
-      firstName: 'Dev',
-      lastName: 'User',
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      username: 'Dev User',
       email: 'dev@thebcms.com',
-      organizations: [],
+      personal: {
+        firstName: 'Dev',
+        lastName: 'User',
+        avatarUri: '',
+      },
+      orgs: [],
       roles: [
         {
           name: JWTRoleName.ADMIN,
