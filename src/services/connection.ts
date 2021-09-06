@@ -12,7 +12,7 @@ import { HTTPStatus } from '@becomes/purple-cheetah/types';
 
 export function createConnectionService(): ConnectionService {
   const logger = useLogger({ name: 'ShimConnectionService' });
-  const http = !ShimConfig.local
+  const http = !ShimConfig.cloud.domain
     ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
     : new Http(
         ShimConfig.cloud.domain,
