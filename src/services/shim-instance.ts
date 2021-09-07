@@ -38,10 +38,7 @@ export function createShimInstanceService(): ShimInstanceService {
           heepUsed: number;
         }>({
           host: {
-            name:
-              process.env.PROD === 'true'
-                ? '172.17.0.1'
-                : 'localhost',
+            name: '172.17.0.1',
             port: '' + secrets[instanceId].port,
           },
           headers: {

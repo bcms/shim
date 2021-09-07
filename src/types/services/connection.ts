@@ -12,5 +12,6 @@ export interface ConnectionService {
 export interface Connection {
   connected: boolean;
   registerAfter: number;
+  sendStatsAfter: number;
   channel: string;
 }
