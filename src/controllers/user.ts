@@ -3,7 +3,8 @@ import {
   createControllerMethod,
 } from '@becomes/purple-cheetah';
 import { ShimConfig } from '../config';
-import type { ShimInstanceUser } from '../types';
+import { Service } from '../services';
+import type { CloudUser } from '../types';
 import { Const } from '../util';
 
 export const UserController = createController({
@@ -13,7 +14,7 @@ export const UserController = createController({
     return {
       verifyWithOtp: createControllerMethod<
         unknown,
-        { ok: boolean; user?: ShimInstanceUser }
+        { ok: boolean; user?: CloudUser }
       >({
         path: '/verify/otp',
         type: 'post',
@@ -25,7 +26,7 @@ export const UserController = createController({
               user: Const.dev.user,
             };
           }
-          return await ShimConfig.connection.send(
+          return await Service.cloudConnection.send(
             instanceId,
             '/user/verify/otp',
             {
@@ -38,7 +39,7 @@ export const UserController = createController({
 
       getAll: createControllerMethod<
         unknown,
-        { user: ShimInstanceUser[] }
+        { user: CloudUser[] }
       >({
         path: '/all',
         type: 'post',
@@ -49,7 +50,7 @@ export const UserController = createController({
               user: [Const.dev.user],
             };
           }
-          return await ShimConfig.connection.send(
+          return await Service.cloudConnection.send(
             instanceId,
             '/user/all',
             {},

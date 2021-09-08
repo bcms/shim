@@ -6,8 +6,12 @@ export const ShimConfig: ShimConfigType = {
     domain: process.env.BCMS_CLOUD_DOMAIN || 'localhost',
     port: process.env.BCMS_CLOUD_PORT || '8081',
   },
-  // Are initialized in `main.ts` file.
-  instance: undefined,
-  security: undefined,
-  connection: undefined,
+  portRange: {
+    from: process.env.BCMS_INSTANCE_PORT_FROM
+      ? parseInt(process.env.BCMS_INSTANCE_PORT_FROM)
+      : 1280,
+    to: process.env.BCMS_INSTANCE_PORT_TO
+      ? parseInt(process.env.BCMS_INSTANCE_PORT_TO)
+      : 1300,
+  },
 };

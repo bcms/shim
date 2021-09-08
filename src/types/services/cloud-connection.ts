@@ -1,6 +1,8 @@
-import type { HTTPError } from "@becomes/purple-cheetah/types";
+import type { HTTPError } from '@becomes/purple-cheetah/types';
+import type { Http } from '../../util';
 
-export interface ConnectionService {
+export interface CloudConnectionService {
+  http: Http;
   send<T>(
     instanceId: string,
     uri: string,
@@ -9,7 +11,7 @@ export interface ConnectionService {
   ): Promise<T>;
 }
 
-export interface Connection {
+export interface CloudConnection {
   connected: boolean;
   registerAfter: number;
   sendStatsAfter: number;

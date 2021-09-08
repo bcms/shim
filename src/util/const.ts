@@ -1,9 +1,9 @@
 import { JWTPermissionName, JWTRoleName } from '@becomes/purple-cheetah-mod-jwt/types';
-import type { ShimInstanceUser } from '../types';
+import type { CloudUser } from '../types';
 
 export const Const: {
   dev: {
-    user: ShimInstanceUser;
+    user: CloudUser;
   };
 } = {
   dev: {

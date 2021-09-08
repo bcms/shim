@@ -7,9 +7,21 @@ export class System {
   static async exec(
     cmd: string,
     onChunk?: (chunk: string, type: 'stdout' | 'stderr') => void,
+    stop?: {
+      exec?: () => void;
+    },
   ): Promise<void> {
     return await new Promise<void>((resolve, reject) => {
       const proc = childProcess.exec(cmd);
+      let closed = false;
+      if (stop) {
+        stop.exec = () => {
+          if (!closed && proc) {
+            proc.kill();
+            resolve();
+          }
+        };
+      }
       let err = '';
       if (onChunk) {
         proc.stdout.on('data', (chunk) => {
@@ -21,6 +33,7 @@ export class System {
         });
       }
       proc.on('close', (code) => {
+        closed = true;
         if (code !== 0) {
           reject(Error(err));
         } else {
