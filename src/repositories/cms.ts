@@ -4,25 +4,6 @@ import { Repo } from '../repo';
 import { Service } from '../services';
 import { CMS, CMSRepoMethods, CMSSchema } from '../types';
 
-async function initRepo() {
-  const instIds = Service.security.license().getInstanceIds();
-  for (let i = 0; i < instIds.length; i++) {
-    const instId = instIds[i];
-    const inst = await Repo.cms.findById(instId);
-    if (!inst) {
-      await Repo.cms.add({
-        _id: instId,
-        createdAt: 0,
-        updatedAt: 0,
-        history: [],
-        port: await Service.cms.nextPost(),
-        secret: Service.cms.createSecret(instId),
-        volumes: [],
-      });
-    }
-  }
-}
-
 export function createCmsRepo(): Module {
   return {
     name: 'Create CMS repository',
@@ -47,10 +28,7 @@ export function createCmsRepo(): Module {
           };
         },
       });
-
-      initRepo()
-        .then(() => next())
-        .catch((err) => next(err));
+      next();
     },
   };
 }

@@ -30,71 +30,6 @@ export function createCloudConnectionService(): Module {
     };
   } = {};
 
-  setInterval(async () => {
-    const licenseService = Service.security.license();
-    if (licenseService && !ShimConfig.local) {
-      const instIds = licenseService.getInstanceIds();
-      for (let i = 0; i < instIds.length; i++) {
-        const instId = instIds[i];
-        const connection = connections[instId];
-        if (!connection) {
-          connections[instId] = {
-            cloud: {
-              connected: false,
-              channel: '',
-              registerAfter: Date.now() - 1000,
-              sendStatsAfter: Date.now() - 1000,
-            },
-            self: {
-              available: false,
-              checkAfter: -1000,
-            },
-          };
-        } else {
-          if (!connection.cloud.connected) {
-            if (connection.cloud.registerAfter < Date.now()) {
-              if (await register(instId)) {
-                connections[instId].cloud.connected = true;
-                logger.info(
-                  'register',
-                  `Instance "${instId}" successfully registered to the cloud.`,
-                );
-              } else {
-                logger.warn(
-                  'register',
-                  `Instance "${instId}" failed to register to the cloud.`,
-                );
-                connections[instId].cloud.registerAfter =
-                  Date.now() + 10000;
-              }
-            }
-          } else {
-            if (connection.cloud.sendStatsAfter < Date.now()) {
-              if (
-                !(await sendStats(
-                  instId,
-                  connections[instId].cloud.channel,
-                ))
-              ) {
-                logger.warn(
-                  'connection',
-                  `Connection failed for "${instId}".`,
-                );
-                connections[instId].cloud.connected = false;
-                connections[instId].cloud.registerAfter =
-                  Date.now() + 10000;
-              } else {
-                connections[instId].cloud.sendStatsAfter =
-                  Date.now() + 5000;
-              }
-            }
-            // TODO: check instance state
-          }
-        }
-      }
-    }
-  }, 1000);
-
   async function getStats(): Promise<InstanceServerStats> {
     const heap = getHeapStatistics();
     const mem = await System.memInfo();
@@ -184,6 +119,79 @@ export function createCloudConnectionService(): Module {
     initialize({ next }) {
       Service.cloudConnection = {
         http,
+        init() {
+          setInterval(async () => {
+            const licenseService = Service.security.license();
+            if (licenseService && !ShimConfig.local) {
+              const instIds = licenseService.getInstanceIds();
+              for (let i = 0; i < instIds.length; i++) {
+                const instId = instIds[i];
+                const connection = connections[instId];
+                if (!connection) {
+                  connections[instId] = {
+                    cloud: {
+                      connected: false,
+                      channel: '',
+                      registerAfter: Date.now() - 1000,
+                      sendStatsAfter: Date.now() - 1000,
+                    },
+                    self: {
+                      available: false,
+                      checkAfter: -1000,
+                    },
+                  };
+                } else {
+                  if (!connection.cloud.connected) {
+                    if (connection.cloud.registerAfter < Date.now()) {
+                      if (await register(instId)) {
+                        connections[instId].cloud.connected = true;
+                        logger.info(
+                          'register',
+                          `Instance "${instId}" successfully registered to the cloud.`,
+                        );
+                      } else {
+                        logger.warn(
+                          'register',
+                          `Instance "${instId}" failed to register to the cloud.`,
+                        );
+                        connections[instId].cloud.registerAfter =
+                          Date.now() + 10000;
+                      }
+                    }
+                  } else {
+                    if (
+                      connection.cloud.sendStatsAfter < Date.now()
+                    ) {
+                      if (
+                        !(await sendStats(
+                          instId,
+                          connections[instId].cloud.channel,
+                        ))
+                      ) {
+                        logger.warn(
+                          'connection',
+                          `Connection failed for "${instId}".`,
+                        );
+                        connections[instId].cloud.connected = false;
+                        connections[instId].cloud.registerAfter =
+                          Date.now() + 10000;
+                      } else {
+                        connections[instId].cloud.sendStatsAfter =
+                          Date.now() + 5000;
+                      }
+                    }
+                    // TODO: check instance state
+                  }
+                }
+              }
+            }
+          }, 1000);
+        },
+        isConnected(instanceId) {
+          return connections[instanceId]
+            ? connections[instanceId].cloud.connected
+            : false;
+        },
         async send(instanceId, uri, payload, error) {
           const connection = connections[instanceId];
           if (!connection) {
@@ -197,7 +205,7 @@ export function createCloudConnectionService(): Module {
           }
           try {
             const response = await http.send<SecurityObject>({
-              path: `/conn/${connection.channel}${uri}`,
+              path: `/conn/${connection.cloud.channel}${uri}`,
               method: 'POST',
               data: Service.security.enc(instanceId, payload),
               headers: {

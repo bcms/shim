@@ -2,6 +2,7 @@ import type { ShimConfig as ShimConfigType } from './types';
 
 export const ShimConfig: ShimConfigType = {
   local: process.env.BCMS_LOCAL === 'true',
+  manage: process.env.BCMS_MANAGE === 'true',
   cloud: {
     domain: process.env.BCMS_CLOUD_DOMAIN || 'localhost',
     port: process.env.BCMS_CLOUD_PORT || '8081',

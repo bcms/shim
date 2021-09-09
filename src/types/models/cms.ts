@@ -38,6 +38,7 @@ export const CMSHistorySchema: ObjectSchema = {
 };
 
 export interface CMS extends FSDBEntity {
+  ok: boolean;
   secret: string;
   port: number;
   volumes: string[];
@@ -46,6 +47,10 @@ export interface CMS extends FSDBEntity {
 
 export const CMSSchema: ObjectSchema = {
   ...FSDBEntitySchema,
+  ok: {
+    __type: 'boolean',
+    __required: true,
+  },
   secret: {
     __type: 'string',
     __required: true,

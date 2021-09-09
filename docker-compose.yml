@@ -11,3 +11,6 @@ services:
       - type: bind
         source: ./licenses
         target: /app/licenses
+      - type: bind
+        source: ./storage
+        target: /app/storage

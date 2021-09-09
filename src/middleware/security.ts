@@ -11,7 +11,7 @@ import { ShimConfig } from '../config';
 export const SecurityMiddleware = createMiddleware({
   path: '/shim/instance',
   after: false,
-  name: 'Shim instance middleware',
+  name: 'Shim instance security middleware',
   handler({ logger }) {
     const errorHandler = createHTTPError({
       logger,

@@ -1,4 +1,5 @@
 export interface CMSService {
+  init(): void;
   createSecret(instanceId: string): string;
   getSecret(instanceId: string): string | undefined;
   checkHealth(instanceId: string): Promise<boolean>;

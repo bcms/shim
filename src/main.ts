@@ -14,6 +14,7 @@ import { createCmsRepo } from './repositories';
 import {
   createCloudConnectionService,
   createSecurityService,
+  Service,
 } from './services';
 import { createCmsService } from './services/cms';
 
@@ -40,6 +41,14 @@ async function main() {
       createCmsService(),
       createCmsRepo(),
     ],
+    onReady() {
+      Service.cloudConnection.init();
+      Service.cms.init();
+      Service.security.init().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error(err);
+      });
+    },
   });
 }
 main().catch((error) => {
