@@ -19,7 +19,8 @@ export const UserController = createController({
         path: '/verify/otp',
         type: 'post',
         async handler({ errorHandler, request }) {
-          const instanceId = request.headers['x-bcms-iid'] as string;
+          const instanceId = request.headers['bcms-iid'] as string;
+          console.log('here', instanceId);
           if (ShimConfig.local) {
             return {
               ok: true,
@@ -44,7 +45,7 @@ export const UserController = createController({
         path: '/all',
         type: 'post',
         async handler({ errorHandler, request }) {
-          const instanceId = request.headers['x-bcms-iid'] as string;
+          const instanceId = request.headers['bcms-iid'] as string;
           if (process.env.BCMS_LOCAL === 'true') {
             return {
               user: [Const.dev.user],

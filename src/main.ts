@@ -1,4 +1,6 @@
 import {
+  createBodyParserMiddleware,
+  createCorsMiddleware,
   createPurpleCheetah,
   updateLogger,
 } from '@becomes/purple-cheetah';
@@ -31,7 +33,11 @@ async function main() {
   createPurpleCheetah({
     port: process.env.PORT ? parseInt(process.env.PORT) : 1282,
     controllers: [UserController, PluginController, HealthController],
-    middleware: [SecurityMiddleware],
+    middleware: [
+      createBodyParserMiddleware(),
+      createCorsMiddleware(),
+      SecurityMiddleware,
+    ],
     modules: [
       createFSDB({
         output: 'storage/shim-db',

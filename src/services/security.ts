@@ -75,7 +75,6 @@ export function createSecurityService(): Module {
                 });
                 if (res.status === 200 && res.data.ok) {
                   licenseService.add(instanceId, licenseRaw);
-                  Service.cms.createSecret(instanceId);
                 }
               } catch (error) {
                 console.error(error);
@@ -90,6 +89,7 @@ export function createSecurityService(): Module {
           for (let i = 0; i < instIds.length; i++) {
             const instId = instIds[i];
             const inst = await Repo.cms.findById(instId);
+            Service.cms.createSecret(instId)
             if (!inst) {
               await Repo.cms.add({
                 _id: instId,
@@ -98,7 +98,7 @@ export function createSecurityService(): Module {
                 ok: false,
                 history: [],
                 port: await Service.cms.nextPost(),
-                secret: Service.cms.createSecret(instId),
+                secret: Service.cms.getSecret(instId),
                 volumes: [],
               });
             }
