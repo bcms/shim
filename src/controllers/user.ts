@@ -20,7 +20,6 @@ export const UserController = createController({
         type: 'post',
         async handler({ errorHandler, request }) {
           const instanceId = request.headers['bcms-iid'] as string;
-          console.log('here', instanceId);
           if (ShimConfig.local) {
             return {
               ok: true,

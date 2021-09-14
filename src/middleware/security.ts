@@ -52,6 +52,10 @@ export const SecurityMiddleware = createMiddleware({
       _res: Response,
       next: NextFunction,
     ) => {
+      if (ShimConfig.local) {
+        next();
+        return;
+      }
       let instanceId = '';
       let nonce = '';
       let timestamp = 0;

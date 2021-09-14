@@ -7,6 +7,7 @@ import { General } from '../util';
 import type { Module } from '@becomes/purple-cheetah/types';
 import { Service } from './main';
 import { Repo } from '../repo';
+import { ShimConfig } from '../config';
 
 export function createSecurityService(): Module {
   return {
@@ -24,6 +25,9 @@ export function createSecurityService(): Module {
 
       Service.security = {
         async init() {
+          if (ShimConfig.local) {
+            return;
+          }
           setInterval(() => {
             const remove: Array<{ nc: string; ts: number }> = [];
             for (let i = 0; i < NCS.length; i++) {
@@ -89,7 +93,7 @@ export function createSecurityService(): Module {
           for (let i = 0; i < instIds.length; i++) {
             const instId = instIds[i];
             const inst = await Repo.cms.findById(instId);
-            Service.cms.createSecret(instId)
+            Service.cms.createSecret(instId);
             if (!inst) {
               await Repo.cms.add({
                 _id: instId,
