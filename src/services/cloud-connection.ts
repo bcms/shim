@@ -121,9 +121,8 @@ export function createCloudConnectionService(): Module {
         http,
         init() {
           setInterval(async () => {
-            const licenseService = Service.security.license();
-            if (licenseService && !ShimConfig.local) {
-              const instIds = licenseService.getInstanceIds();
+            if (!ShimConfig.local) {
+              const instIds = Service.license.getInstanceIds();
               for (let i = 0; i < instIds.length; i++) {
                 const instId = instIds[i];
                 const connection = connections[instId];

@@ -1,46 +1,83 @@
 import { useStringUtility } from '@becomes/purple-cheetah';
-import * as childProcess from 'child_process';
+import {
+  SpawnOptions,
+  spawn,
+  exec,
+  ExecOptions,
+} from 'child_process';
+
+interface SystemExecOutput {
+  stop(): void;
+  awaiter: Promise<void>;
+}
 
 export class System {
   private static stringUtil = useStringUtility();
 
-  static async exec(
+  static async spawn(
     cmd: string,
-    onChunk?: (chunk: string, type: 'stdout' | 'stderr') => void,
-    stop?: {
-      exec?: () => void;
-    },
+    args: string[],
+    options?: SpawnOptions,
   ): Promise<void> {
-    return await new Promise<void>((resolve, reject) => {
-      const proc = childProcess.exec(cmd);
-      let closed = false;
-      if (stop) {
-        stop.exec = () => {
-          if (!closed && proc) {
-            proc.kill();
-            resolve();
-          }
-        };
-      }
-      let err = '';
-      if (onChunk) {
-        proc.stdout.on('data', (chunk) => {
-          onChunk(chunk, 'stdout');
-        });
-        proc.stderr.on('data', (chunk) => {
-          err += chunk;
-          onChunk(chunk, 'stderr');
-        });
-      }
+    return new Promise<void>((resolve, reject) => {
+      const proc = spawn(
+        cmd,
+        args,
+        options
+          ? options
+          : {
+              stdio: 'inherit',
+            },
+      );
       proc.on('close', (code) => {
-        closed = true;
         if (code !== 0) {
-          reject(Error(err));
+          reject(code);
         } else {
           resolve();
         }
       });
     });
+  }
+  static exec(
+    cmd: string,
+    options?: ExecOptions & {
+      onChunk?: (type: 'stdout' | 'stderr', chunk: string) => void;
+      doNotThrowError?: boolean;
+    },
+  ): SystemExecOutput {
+    const output: SystemExecOutput = {
+      stop: undefined as never,
+      awaiter: undefined as never,
+    };
+    output.awaiter = new Promise<void>((resolve, reject) => {
+      const proc = exec(cmd, options);
+      output.stop = () => {
+        proc.kill();
+      };
+      if (options && options.onChunk) {
+        const onChunk = options.onChunk;
+        if (proc.stderr) {
+          proc.stderr.on('data', (chunk) => {
+            onChunk('stderr', chunk);
+          });
+        }
+        if (proc.stdout) {
+          proc.stdout.on('data', (chunk) => {
+            onChunk('stdout', chunk);
+          });
+        }
+      }
+      proc.on('close', (code) => {
+        if (options && options.doNotThrowError) {
+          resolve();
+        } else if (code !== 0) {
+          reject(code);
+        } else {
+          resolve();
+        }
+      });
+    });
+    return output;
   }
   /**
    * In [kB]
@@ -51,11 +88,13 @@ export class System {
     available: number;
   }> {
     let data = '';
-    await this.exec('cat /proc/meminfo', (chunk, type) => {
-      if (type === 'stdout') {
-        data += chunk;
-      }
-    });
+    await this.exec('cat /proc/meminfo', {
+      onChunk: (chunk, type) => {
+        if (type === 'stdout') {
+          data += chunk;
+        }
+      },
+    }).awaiter;
     const totalString = this.stringUtil.textBetween(
       data,
       'MemTotal:',
@@ -90,11 +129,13 @@ export class System {
     used: number;
   }> {
     let data = '';
-    await this.exec('df', (chunk, type) => {
-      if (type === 'stdout') {
-        data += chunk;
-      }
-    });
+    await this.exec('df', {
+      onChunk: (chunk, type) => {
+        if (type === 'stdout') {
+          data += chunk;
+        }
+      },
+    }).awaiter;
     const info = this.stringUtil
       .textBetween(data, 'overlay', '\n')
       .split(' ')

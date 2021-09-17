@@ -4,4 +4,5 @@ export const Service: ServiceType = {
   cms: undefined as never,
   cloudConnection: undefined as never,
   security: undefined as never,
+  license: undefined as never,
 };

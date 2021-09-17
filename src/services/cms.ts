@@ -118,12 +118,9 @@ export function createCmsService(): Module {
           return false;
         },
         streamLogs(instanceId, onChunk) {
-          const procStop: {
-            exec: () => void;
-          } = {} as never;
           const date = new Date();
 
-          System.exec(
+          const proc = System.exec(
             `tail -f ${path.join(
               process.cwd(),
               'storage',
@@ -132,11 +129,16 @@ export function createCmsService(): Module {
               'logs',
               `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}.log`,
             )}`,
-            onChunk,
-            procStop,
+            { onChunk },
           );
+          proc.awaiter.catch((error) => {
+            logger.error('streamLogs', error);
+            proc.stop();
+          });
 
-          return procStop;
+          return {
+            stop: proc.stop,
+          };
         },
       };
       next();

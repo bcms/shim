@@ -2,7 +2,6 @@ import * as crypto from 'crypto';
 import * as path from 'path';
 import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { SecurityObject, SecurityObjectMessage } from '../types';
-import { createLicenseService } from './license';
 import { General } from '../util';
 import type { Module } from '@becomes/purple-cheetah/types';
 import { Service } from './main';
@@ -14,13 +13,11 @@ export function createSecurityService(): Module {
     name: 'Create security service',
     initialize({ next }) {
       const logger = useLogger({ name: 'Security service' });
-      const licenseService = createLicenseService();
       const NCS: Array<{
         expAt: number;
         nc: string;
         ts: number;
       }> = [];
-
       const fs = useFS();
 
       Service.security = {
@@ -78,9 +75,10 @@ export function createSecurityService(): Module {
                   method: 'POST',
                 });
                 if (res.status === 200 && res.data.ok) {
-                  licenseService.add(instanceId, licenseRaw);
+                  Service.license.add(instanceId, licenseRaw);
                 }
               } catch (error) {
+                // eslint-disable-next-line no-console
                 console.error(error);
                 logger.error(
                   'init',
@@ -89,7 +87,7 @@ export function createSecurityService(): Module {
               }
             }
           }
-          const instIds = Service.security.license().getInstanceIds();
+          const instIds = Service.license.getInstanceIds();
           for (let i = 0; i < instIds.length; i++) {
             const instId = instIds[i];
             const inst = await Repo.cms.findById(instId);
@@ -119,7 +117,7 @@ export function createSecurityService(): Module {
           return !!NCS.find((e) => e.nc === nc && ts === ts);
         },
         enc(instanceId, payload) {
-          const license = licenseService.get(instanceId);
+          const license = Service.license.get(instanceId);
           if (!license) {
             throw Error(
               `License for instance "${instanceId}" does not exist.`,
@@ -153,8 +151,8 @@ export function createSecurityService(): Module {
           cipher.destroy();
           return obj;
         },
-        dec<T>(instanceId, obj) {
-          const license = licenseService.get(instanceId);
+        dec<T>(instanceId: string, obj: SecurityObject) {
+          const license = Service.license.get(instanceId);
           if (!license) {
             throw Error(
               `License for instance "${instanceId}" does not exist.`,
@@ -201,9 +199,6 @@ export function createSecurityService(): Module {
           }
           decipher.destroy();
           return msg.pl;
-        },
-        license() {
-          return licenseService;
         },
       };
 

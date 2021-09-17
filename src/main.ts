@@ -12,7 +12,6 @@ import {
   UserController,
 } from './controllers';
 import { SecurityMiddleware } from './middleware/security';
-import { createCmsRepo } from './repositories';
 import {
   createCloudConnectionService,
   createSecurityService,
@@ -45,7 +44,6 @@ async function main() {
       createCloudConnectionService(),
       createSecurityService(),
       createCmsService(),
-      createCmsRepo(),
     ],
     onReady() {
       Service.cloudConnection.init();

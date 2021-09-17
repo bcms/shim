@@ -1,5 +1,3 @@
-import type { LicenseService } from './license';
-
 export interface SecurityObject {
   /** Encryption index */
   ei: number;
@@ -27,5 +25,4 @@ export interface SecurityService {
   isNonceLatched(nonce: string, ts: number): boolean;
   enc<T>(instanceId: string, payload: T): SecurityObject;
   dec<T>(instanceId: string, obj: SecurityObject): T;
-  license(): LicenseService;
 }
