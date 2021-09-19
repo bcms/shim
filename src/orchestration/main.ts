@@ -1,5 +1,6 @@
 import { useLogger } from '@becomes/purple-cheetah';
 import type { Module } from '@becomes/purple-cheetah/types';
+import { ShimConfig } from '../config';
 import type {
   Instance,
   InstanceStats,
@@ -31,6 +32,24 @@ export function createInstanceOrchestration(): Module {
             exo.err += chunk;
           }
         };
+      }
+      function nextPort() {
+        const takenPorts = Object.keys(insts).map(
+          (instId) => insts[instId].stats().port,
+        );
+        for (
+          let port = ShimConfig.portRange.from;
+          port < ShimConfig.portRange.to;
+          port++
+        ) {
+          const sPort = '' + port;
+          if (!takenPorts.find((e) => e === sPort)) {
+            return sPort;
+          }
+        }
+      }
+      async function init() {
+        
       }
 
       Orchestration.getInstance = (instId) => {
@@ -168,7 +187,9 @@ export function createInstanceOrchestration(): Module {
         }
       };
 
-      next();
+      init()
+        .then(() => next())
+        .catch((err) => next(err));
     },
   };
 }

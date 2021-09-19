@@ -14,14 +14,13 @@ export interface InstanceStats {
 
 export interface Instance {
   stats(): InstanceStats;
-  createSecret(instanceId: string): string;
-  getSecret(instanceId: string): string | undefined;
-  checkHealth(instanceId: string): Promise<boolean>;
+  createSecret(): Promise<string>;
+  getSecret(): string;
+  checkHealth(): Promise<boolean>;
   /**
    * @returns A function which will stop streaming.
    */
   streamLogs(
-    instanceId: string,
     onChunk: (chunk: string, type: 'stdout' | 'stderr') => void,
-  ): { exec: () => void };
+  ): { stop: () => void };
 }
