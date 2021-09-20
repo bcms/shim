@@ -20,7 +20,6 @@ export interface SecurityObjectMessage<T> {
 }
 
 export interface SecurityService {
-  init(): Promise<void>;
   letchNonce(nonce: string, ts: number): void;
   isNonceLatched(nonce: string, ts: number): boolean;
   enc<T>(instanceId: string, payload: T): SecurityObject;

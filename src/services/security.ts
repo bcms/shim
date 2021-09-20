@@ -1,111 +1,20 @@
 import * as crypto from 'crypto';
-import * as path from 'path';
-import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { SecurityObject, SecurityObjectMessage } from '../types';
 import { General } from '../util';
 import type { Module } from '@becomes/purple-cheetah/types';
 import { Service } from './main';
-import { Repo } from '../repo';
-import { ShimConfig } from '../config';
 
 export function createSecurityService(): Module {
   return {
     name: 'Create security service',
     initialize({ next }) {
-      const logger = useLogger({ name: 'Security service' });
       const NCS: Array<{
         expAt: number;
         nc: string;
         ts: number;
       }> = [];
-      const fs = useFS();
 
       Service.security = {
-        async init() {
-          if (ShimConfig.local) {
-            return;
-          }
-          setInterval(() => {
-            const remove: Array<{ nc: string; ts: number }> = [];
-            for (let i = 0; i < NCS.length; i++) {
-              if (NCS[i].expAt < Date.now()) {
-                remove.push({
-                  nc: NCS[i].nc,
-                  ts: NCS[i].ts,
-                });
-              }
-            }
-            for (let i = 0; i < remove.length; i++) {
-              for (let j = 0; j < NCS.length; j++) {
-                if (
-                  NCS[j].ts === remove[i].ts &&
-                  NCS[j].nc === remove[i].nc
-                ) {
-                  NCS.splice(j, 1);
-                  break;
-                }
-              }
-            }
-          }, 1000);
-          if (
-            !(await fs.exist(path.join(process.cwd(), 'licenses')))
-          ) {
-            throw Error('licenses directory does not exist!');
-          }
-          const licenseFiles = await fs.readdir(
-            path.join(process.cwd(), 'licenses'),
-          );
-          for (let i = 0; i < licenseFiles.length; i++) {
-            if (licenseFiles[i].endsWith('.license')) {
-              const instanceId = licenseFiles[i].split('.')[0];
-              const licenseRaw = (
-                await fs.read(
-                  path.join(
-                    process.cwd(),
-                    'licenses',
-                    licenseFiles[i],
-                  ),
-                )
-              ).toString();
-              try {
-                const res = await Service.cloudConnection.http.send<{
-                  ok: boolean;
-                }>({
-                  path: `/instance/valid/${instanceId}`,
-                  method: 'POST',
-                });
-                if (res.status === 200 && res.data.ok) {
-                  Service.license.add(instanceId, licenseRaw);
-                }
-              } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error(error);
-                logger.error(
-                  'init',
-                  `Invalid license file ${licenseFiles[i]}`,
-                );
-              }
-            }
-          }
-          const instIds = Service.license.getInstanceIds();
-          for (let i = 0; i < instIds.length; i++) {
-            const instId = instIds[i];
-            const inst = await Repo.cms.findById(instId);
-            Service.cms.createSecret(instId);
-            if (!inst) {
-              await Repo.cms.add({
-                _id: instId,
-                createdAt: 0,
-                updatedAt: 0,
-                ok: false,
-                history: [],
-                port: await Service.cms.nextPost(),
-                secret: Service.cms.getSecret(instId),
-                volumes: [],
-              });
-            }
-          }
-        },
         letchNonce(nc, ts: number) {
           NCS.push({
             nc,

@@ -6,23 +6,23 @@ import type { Instance, InstanceStats } from '../types';
 import { Http, System } from '../util';
 import { useLogger } from '@becomes/purple-cheetah';
 
-export function createInstance(config: {
+export async function createInstance(config: {
   instanceId: string;
   port: string;
   fs: FS;
-  http: Http;
-}): Instance {
+}): Promise<Instance> {
   const stats: InstanceStats = {
     id: config.instanceId,
-    name: `bcms-${config.instanceId}-${config.port}`,
+    name: `bcms-instance-${config.instanceId}`,
     port: config.port,
     ip: '172.17.0.1',
-    status: 'down',
+    status: 'unknown',
   };
   let secret = '';
   const logger = useLogger({ name: 'Instance' });
+  const http = new Http(stats.ip);
 
-  return {
+  const self: Instance = {
     stats() {
       return stats;
     },
@@ -31,7 +31,7 @@ export function createInstance(config: {
       try {
         const timestamp = '' + Date.now();
         const nonce = crypto.randomBytes(8).toString('hex');
-        const res = await config.http.send<{ ok: boolean }>({
+        const res = await http.send<{ ok: boolean }>({
           path: '/api/shim/calls/health',
           host: {
             name: stats.ip,
@@ -107,4 +107,6 @@ export function createInstance(config: {
       };
     },
   };
+  await self.createSecret();
+  return self;
 }

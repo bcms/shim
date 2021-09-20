@@ -1,6 +1,8 @@
-import { useLogger } from '@becomes/purple-cheetah';
+import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { Module } from '@becomes/purple-cheetah/types';
+import { createDocker, createInstance } from '.';
 import { ShimConfig } from '../config';
+import { Service } from '../services';
 import type {
   Instance,
   InstanceStats,
@@ -15,9 +17,11 @@ export function createInstanceOrchestration(): Module {
     name: 'Orchestration',
     initialize({ next }) {
       const logger = useLogger({ name: 'Orchestration' });
+      const docker = createDocker();
       const insts: {
         [id: string]: Instance;
       } = {};
+      const fs = useFS();
 
       function execHelper(exo: {
         out: string;
@@ -48,8 +52,54 @@ export function createInstanceOrchestration(): Module {
           }
         }
       }
+
       async function init() {
-        
+        if (!ShimConfig.manage) {
+          /**
+           * Instances should not be managed.
+           */
+          return;
+        }
+        /**
+         * List of available instances vie Docker CLI.
+         */
+        const inspects = await docker.inspectContainers();
+        for (let i = 0; i < inspects.length; i++) {
+          const inspect = inspects[i];
+          const license = Service.license.get(inspect.id);
+          if (license) {
+            insts[inspect.id] = await createInstance({
+              instanceId: inspect.id,
+              fs,
+              port: inspect.port,
+            });
+            if (!inspect.up) {
+              await Orchestration.remove(inspect.id);
+              insts[inspect.id] = await createInstance({
+                instanceId: inspect.id,
+                fs,
+                port: nextPort(),
+              });
+              await Orchestration.start(inspect.id);
+            } else {
+              insts[inspect.id].stats().status = 'active';
+            }
+          } else {
+            await Orchestration.remove(inspect.id);
+          }
+        }
+        const instIds = Service.license.getInstanceIds();
+        for (let i = 0; i < instIds.length; i++) {
+          const instId = instIds[i];
+          if (!insts[instId]) {
+            insts[instId] = await createInstance({
+              fs,
+              instanceId: instId,
+              port: nextPort(),
+            });
+            await Orchestration.start(instId);
+          }
+        }
       }
 
       Orchestration.getInstance = (instId) => {
@@ -97,6 +147,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.stats().status = 'down-to-error';
             logger.error('remove', {
               msg: `Failed to remove container "${containerName}"`,
               exo,
@@ -106,9 +157,8 @@ export function createInstanceOrchestration(): Module {
               'remove',
               `Container "${containerName}" removed.`,
             );
+            delete insts[instId];
           }
-
-          delete insts[instId];
         }
       };
       Orchestration.restart = async (instId) => {
@@ -124,11 +174,13 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.stats().status = 'down';
             logger.error('restart', {
               msg: `Failed to restart container "${containerName}"`,
               exo,
             });
           } else {
+            inst.stats().status = 'active';
             logger.info(
               'restart',
               `Container "${containerName}" restarted.`,
@@ -149,11 +201,13 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.stats().status = 'active';
             logger.error('start', {
               msg: `Failed to start container "${containerName}"`,
               exo,
             });
           } else {
+            inst.stats().status = 'down-to-error';
             logger.info(
               'start',
               `Container "${containerName}" started.`,
@@ -174,6 +228,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.stats().status = 'down';
             logger.error('stop', {
               msg: `Failed to stop container "${containerName}"`,
               exo,

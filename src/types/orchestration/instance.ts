@@ -2,7 +2,8 @@ export type InstanceStatus =
   | 'active'
   | 'starting'
   | 'down'
-  | 'down-to-error';
+  | 'down-to-error'
+  | 'unknown';
 
 export interface InstanceStats {
   id: string;

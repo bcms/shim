@@ -57,7 +57,7 @@ async function main() {
         }
         rows[rowIndex].push(line.substring(startIndex, endIndex));
       }
-      if (!rows[rowIndex][6].startsWith('bcms-')) {
+      if (!rows[rowIndex][6].startsWith('bcms-instance-')) {
         rows.pop();
       }
     }
@@ -69,11 +69,35 @@ async function main() {
     up: boolean;
   }> = [];
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    
+    const cols = rows[i];
+    const name = cols[6];
+    let port = '';
+    await System.exec(`docker inspect ${name}`, {
+      onChunk: execHelper(exo),
+      doNotThrowError: true,
+    }).awaiter;
+    if (!exo.err && exo.out.startsWith('[')) {
+      const data = JSON.parse(exo.out)[0];
+      if (data) {
+        const ports = data.NetworkSettings.Ports;
+        for (const key in ports) {
+          if (ports[key]) {
+            port = ports[key][0].HostPort;
+          }
+        }
+      }
+    } else {
+      console.error(`Failed to inspect "${name}"`, exo);
+    }
+    instInfos.push({
+      name,
+      ip: '172.17.0.1',
+      up: cols[4].startsWith('Up'),
+      port,
+    });
   }
 
-  console.log(rows);
+  console.log(instInfos);
 }
 main().catch((err) => {
   console.error(err);

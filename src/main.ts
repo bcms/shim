@@ -12,10 +12,11 @@ import {
   UserController,
 } from './controllers';
 import { SecurityMiddleware } from './middleware/security';
+import { createInstanceOrchestration } from './orchestration';
 import {
   createCloudConnectionService,
+  createLicenseService,
   createSecurityService,
-  Service,
 } from './services';
 import { createCmsService } from './services/cms';
 
@@ -44,15 +45,9 @@ async function main() {
       createCloudConnectionService(),
       createSecurityService(),
       createCmsService(),
+      createLicenseService(),
+      createInstanceOrchestration(),
     ],
-    onReady() {
-      Service.cloudConnection.init();
-      Service.cms.init();
-      Service.security.init().catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error(err);
-      });
-    },
   });
 }
 main().catch((error) => {

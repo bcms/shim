@@ -54,36 +54,39 @@ export function createLicenseService(): Module {
             // eslint-disable-next-line no-console
             console.error(error);
             logger.error(
-              'init',
+              'checkLicense',
               `Invalid license file ${licenseName}`,
             );
           }
         }
       }
 
+      watcher.on('add', async (location) => {
+        const result = await checkLicense(location);
+        if (result) {
+          add(result.instId, result.licenseRaw);
+        }
+      });
+      watcher.on('change', async (location) => {
+        const result = await checkLicense(location);
+        if (result) {
+          add(result.instId, result.licenseRaw);
+        }
+      });
+      watcher.on('unlink', async (location) => {
+        if (location.endsWith('.license')) {
+          const parts = location.split('/');
+          const instId = parts[parts.length - 1].split('.')[0];
+          if (instId) {
+            delete licenses[instId];
+          }
+        }
+      });
+
       Service.license = {
         getInstanceIds() {
           return Object.keys(licenses);
         },
-        // add(instanceId, license) {
-        //   const licenseCore = General.string.getTextBetween(
-        //     license,
-        //     '---- BEGIN BCMS LICENSE ----\n',
-        //     '\n---- END BCMS LICENSE ----',
-        //   );
-        //   const licenseParts: string[] = licenseCore.split('\n');
-        //   if (licenseParts.length !== 20) {
-        //     throw Error('Invalid license length.');
-        //   }
-        //   licenses[instanceId] = {
-        //     list: licenseParts.map((e) => {
-        //       return { str: e, buf: Buffer.from(e, 'base64') };
-        //     }),
-        //   };
-        // },
-        // remove(instanceId) {
-        //   delete licenses[instanceId];
-        // },
         get(instanceId) {
           return licenses[instanceId];
         },
