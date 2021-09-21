@@ -61,11 +61,13 @@ export function createLicenseService(): Module {
         }
       }
 
+
       watcher.on('add', async (location) => {
         const result = await checkLicense(location);
         if (result) {
           add(result.instId, result.licenseRaw);
         }
+        next();
       });
       watcher.on('change', async (location) => {
         const result = await checkLicense(location);
@@ -91,7 +93,6 @@ export function createLicenseService(): Module {
           return licenses[instanceId];
         },
       };
-      next();
     },
   };
 }

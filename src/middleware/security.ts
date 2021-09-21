@@ -5,8 +5,8 @@ import {
 } from '@becomes/purple-cheetah';
 import { HTTPStatus } from '@becomes/purple-cheetah/types';
 import type { NextFunction, Request, Response } from 'express';
-import { Service } from '../services';
 import { ShimConfig } from '../config';
+import { Orchestration } from '../orchestration';
 
 export const SecurityMiddleware = createMiddleware({
   path: '/shim/instance',
@@ -125,8 +125,9 @@ export const SecurityMiddleware = createMiddleware({
         next(errorHandler.occurred(HTTPStatus.FORBIDDEN, 'Blocked.'));
         return;
       }
-      const instanceSecret = Service.cms.getSecret(instanceId);
-      if (!instanceSecret) {
+      const instance = Orchestration.getInstance(instanceId);
+      // const instanceSecret = Service.cloudConnection.getSecret(instanceId);
+      if (!instance) {
         next(
           errorHandler.occurred(
             HTTPStatus.FORBIDDEN,
@@ -136,7 +137,7 @@ export const SecurityMiddleware = createMiddleware({
         return;
       }
       const checkSig = crypto
-        .createHmac('sha256', instanceSecret)
+        .createHmac('sha256', instance.getSecret())
         .update(nonce + timestamp + JSON.stringify(req.body))
         .digest('hex');
       if (!ShimConfig.local && checkSig !== sig) {

@@ -4,7 +4,7 @@ export const ShimConfig: ShimConfigType = {
   local: process.env.BCMS_LOCAL === 'true',
   manage: process.env.BCMS_MANAGE === 'true',
   cloud: {
-    domain: process.env.BCMS_CLOUD_DOMAIN || 'localhost',
+    domain: process.env.BCMS_CLOUD_DOMAIN,
     port: process.env.BCMS_CLOUD_PORT || '8081',
   },
   portRange: {

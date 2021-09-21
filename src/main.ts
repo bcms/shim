@@ -17,8 +17,8 @@ import {
   createCloudConnectionService,
   createLicenseService,
   createSecurityService,
+  Service,
 } from './services';
-import { createCmsService } from './services/cms';
 
 async function main() {
   if (ShimConfig.local) {
@@ -44,10 +44,12 @@ async function main() {
       }),
       createCloudConnectionService(),
       createSecurityService(),
-      createCmsService(),
       createLicenseService(),
       createInstanceOrchestration(),
     ],
+    onReady() {
+      Service.cloudConnection.init();
+    },
   });
 }
 main().catch((error) => {

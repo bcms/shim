@@ -23,8 +23,12 @@ export function createDocker(): Docker {
         out: '',
         err: '',
       };
-      await System.exec('docker ps -a', { onChunk: execHelper(exo) })
-        .awaiter;
+      try {
+        await System.exec('docker ps -a', { onChunk: execHelper(exo) })
+          .awaiter;
+      } catch (error) {
+        throw Error(error)
+      }
       let lines = exo.out.split('\n');
       const headerIndexes = [0];
       const rows: string[][] = [];

@@ -2,7 +2,7 @@ import * as path from 'path';
 import type { FS } from '@becomes/purple-cheetah/types';
 import * as crypto from 'crypto';
 import { ShimConfig } from '../config';
-import type { Instance, InstanceStats } from '../types';
+import type { Instance } from '../types';
 import { Http, System } from '../util';
 import { useLogger } from '@becomes/purple-cheetah';
 
@@ -11,20 +11,17 @@ export async function createInstance(config: {
   port: string;
   fs: FS;
 }): Promise<Instance> {
-  const stats: InstanceStats = {
-    id: config.instanceId,
-    name: `bcms-instance-${config.instanceId}`,
-    port: config.port,
-    ip: '172.17.0.1',
-    status: 'unknown',
-  };
   let secret = '';
   const logger = useLogger({ name: 'Instance' });
-  const http = new Http(stats.ip);
+  const http = new Http('172.17.0.1');
 
   const self: Instance = {
-    stats() {
-      return stats;
+    stats: {
+      id: config.instanceId,
+      name: `bcms-instance-${config.instanceId}`,
+      port: config.port,
+      ip: '172.17.0.1',
+      status: 'unknown',
     },
     async checkHealth() {
       const place = 'checkHealth';
@@ -34,8 +31,8 @@ export async function createInstance(config: {
         const res = await http.send<{ ok: boolean }>({
           path: '/api/shim/calls/health',
           host: {
-            name: stats.ip,
-            port: ShimConfig.manage ? '' + stats.port : '1280',
+            name: self.stats.ip,
+            port: ShimConfig.manage ? '' + self.stats.port : '1280',
           },
           method: 'POST',
           headers: {
@@ -91,7 +88,7 @@ export async function createInstance(config: {
           process.cwd(),
           'storage',
           'instances',
-          stats.id,
+          self.stats.id,
           'logs',
           `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}.log`,
         )}`,

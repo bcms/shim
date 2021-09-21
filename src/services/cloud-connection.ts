@@ -1,15 +1,25 @@
 import * as os from 'os';
 import { useLogger } from '@becomes/purple-cheetah';
 import { ShimConfig } from '../config';
-import type {
-  CloudConnection,
-  InstanceServerStats,
-  SecurityObject,
-} from '../types';
+import type { CloudConnection, SecurityObject } from '../types';
 import { General, Http, System } from '../util';
 import { HTTPStatus, Module } from '@becomes/purple-cheetah/types';
 import { getHeapStatistics } from 'v8';
 import { Service } from './main';
+
+interface ServerStats {
+  cpu: {
+    cores: number;
+    usage: number;
+  };
+  ramAvailable: number;
+  ramUsed: number;
+  diskAvailable: number;
+  diskUsed: number;
+  heepAvailable: number;
+  heepUsed: number;
+  lastUpdate: number;
+}
 
 export function createCloudConnectionService(): Module {
   const logger = useLogger({ name: 'ShimConnectionService' });
@@ -30,7 +40,7 @@ export function createCloudConnectionService(): Module {
     };
   } = {};
 
-  async function getStats(): Promise<InstanceServerStats> {
+  async function getStats(): Promise<ServerStats> {
     const heap = getHeapStatistics();
     const mem = await System.memInfo();
     const disk = await System.diskInfo();

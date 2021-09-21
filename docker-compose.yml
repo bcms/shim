@@ -9,8 +9,14 @@ services:
         source: ./src
         target: /app/src
       - type: bind
+        source: ./.env.dev
+        target: /app/.env.dev
+      - type: bind
         source: ./licenses
         target: /app/licenses
       - type: bind
         source: ./storage
         target: /app/storage
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock

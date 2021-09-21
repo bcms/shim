@@ -51,6 +51,7 @@ export class System {
     };
     output.awaiter = new Promise<void>((resolve, reject) => {
       const proc = exec(cmd, options);
+      let err = '';
       output.stop = () => {
         proc.kill();
       };
@@ -59,6 +60,9 @@ export class System {
         if (proc.stderr) {
           proc.stderr.on('data', (chunk) => {
             onChunk('stderr', chunk);
+            if (options && !options.doNotThrowError) {
+              err += chunk;
+            }
           });
         }
         if (proc.stdout) {
@@ -71,7 +75,7 @@ export class System {
         if (options && options.doNotThrowError) {
           resolve();
         } else if (code !== 0) {
-          reject(code);
+          reject(`${code} - ${err}`);
         } else {
           resolve();
         }
@@ -89,7 +93,7 @@ export class System {
   }> {
     let data = '';
     await this.exec('cat /proc/meminfo', {
-      onChunk: (chunk, type) => {
+      onChunk: (type, chunk) => {
         if (type === 'stdout') {
           data += chunk;
         }
@@ -130,7 +134,7 @@ export class System {
   }> {
     let data = '';
     await this.exec('df', {
-      onChunk: (chunk, type) => {
+      onChunk: (type, chunk) => {
         if (type === 'stdout') {
           data += chunk;
         }

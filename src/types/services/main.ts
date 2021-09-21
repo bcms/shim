@@ -1,5 +1,4 @@
 import type {
-  CMSService,
   CloudConnectionService,
   SecurityService,
   LicenseService,
@@ -8,6 +7,5 @@ import type {
 export interface Service {
   security: SecurityService;
   cloudConnection: CloudConnectionService;
-  cms: CMSService;
   license: LicenseService;
 }

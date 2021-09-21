@@ -14,7 +14,7 @@ export interface InstanceStats {
 }
 
 export interface Instance {
-  stats(): InstanceStats;
+  stats: InstanceStats;
   createSecret(): Promise<string>;
   getSecret(): string;
   checkHealth(): Promise<boolean>;

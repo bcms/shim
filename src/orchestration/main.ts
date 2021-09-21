@@ -19,7 +19,10 @@ export function createInstanceOrchestration(): Module {
       const logger = useLogger({ name: 'Orchestration' });
       const docker = createDocker();
       const insts: {
-        [id: string]: Instance;
+        [id: string]: {
+          data: Instance;
+          alive: boolean;
+        };
       } = {};
       const fs = useFS();
 
@@ -39,7 +42,7 @@ export function createInstanceOrchestration(): Module {
       }
       function nextPort() {
         const takenPorts = Object.keys(insts).map(
-          (instId) => insts[instId].stats().port,
+          (instId) => insts[instId].data.stats.port,
         );
         for (
           let port = ShimConfig.portRange.from;
@@ -68,53 +71,63 @@ export function createInstanceOrchestration(): Module {
           const inspect = inspects[i];
           const license = Service.license.get(inspect.id);
           if (license) {
-            insts[inspect.id] = await createInstance({
-              instanceId: inspect.id,
-              fs,
-              port: inspect.port,
-            });
-            if (!inspect.up) {
-              await Orchestration.remove(inspect.id);
-              insts[inspect.id] = await createInstance({
+            insts[inspect.id] = {
+              data: await createInstance({
                 instanceId: inspect.id,
                 fs,
-                port: nextPort(),
-              });
+                port: inspect.port,
+              }),
+              alive: false,
+            };
+            if (!inspect.up) {
+              await Orchestration.remove(inspect.id);
+              insts[inspect.id] = {
+                data: await createInstance({
+                  instanceId: inspect.id,
+                  fs,
+                  port: nextPort(),
+                }),
+                alive: false,
+              };
               await Orchestration.start(inspect.id);
             } else {
-              insts[inspect.id].stats().status = 'active';
+              insts[inspect.id].data.stats.status = 'active';
             }
           } else {
             await Orchestration.remove(inspect.id);
           }
         }
         const instIds = Service.license.getInstanceIds();
+        console.log(instIds);
         for (let i = 0; i < instIds.length; i++) {
           const instId = instIds[i];
           if (!insts[instId]) {
-            insts[instId] = await createInstance({
-              fs,
-              instanceId: instId,
-              port: nextPort(),
-            });
+            insts[instId] = {
+              data: await createInstance({
+                fs,
+                instanceId: instId,
+                port: nextPort(),
+              }),
+              alive: true,
+            };
             await Orchestration.start(instId);
           }
         }
       }
 
       Orchestration.getInstance = (instId) => {
-        return insts[instId];
+        return insts[instId] ? insts[instId].data : undefined;
       };
       Orchestration.listInstances = (query) => {
         if (!query) {
-          return Object.keys(insts).map((e) => insts[e].stats());
+          return Object.keys(insts).map((e) => insts[e].data.stats);
         }
         const output: InstanceStats[] = [];
         const instIds = Object.keys(insts);
         for (let i = 0; i < instIds.length; i++) {
           const instId = instIds[i];
-          if (query(insts[instId])) {
-            output.push(insts[instId].stats());
+          if (query(insts[instId].data)) {
+            output.push(insts[instId].data.stats);
           }
         }
         return output;
@@ -122,7 +135,7 @@ export function createInstanceOrchestration(): Module {
       Orchestration.remove = async (instId) => {
         if (insts[instId]) {
           const inst = insts[instId];
-          const containerName = inst.stats().name;
+          const containerName = inst.data.stats.name;
           const exo = {
             out: '',
             err: '',
@@ -147,7 +160,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.stats().status = 'down-to-error';
+            inst.data.stats.status = 'down-to-error';
             logger.error('remove', {
               msg: `Failed to remove container "${containerName}"`,
               exo,
@@ -164,7 +177,7 @@ export function createInstanceOrchestration(): Module {
       Orchestration.restart = async (instId) => {
         if (insts[instId]) {
           const inst = insts[instId];
-          const containerName = inst.stats().name;
+          const containerName = inst.data.stats.name;
           const exo = {
             out: '',
             err: '',
@@ -174,13 +187,13 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.stats().status = 'down';
+            inst.data.stats.status = 'down';
             logger.error('restart', {
               msg: `Failed to restart container "${containerName}"`,
               exo,
             });
           } else {
-            inst.stats().status = 'active';
+            inst.data.stats.status = 'active';
             logger.info(
               'restart',
               `Container "${containerName}" restarted.`,
@@ -191,7 +204,7 @@ export function createInstanceOrchestration(): Module {
       Orchestration.start = async (instId) => {
         if (insts[instId]) {
           const inst = insts[instId];
-          const containerName = inst.stats().name;
+          const containerName = inst.data.stats.name;
           const exo = {
             out: '',
             err: '',
@@ -201,13 +214,13 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.stats().status = 'active';
+            inst.data.stats.status = 'active';
             logger.error('start', {
               msg: `Failed to start container "${containerName}"`,
               exo,
             });
           } else {
-            inst.stats().status = 'down-to-error';
+            inst.data.stats.status = 'down-to-error';
             logger.info(
               'start',
               `Container "${containerName}" started.`,
@@ -218,7 +231,7 @@ export function createInstanceOrchestration(): Module {
       Orchestration.stop = async (instId) => {
         if (insts[instId]) {
           const inst = insts[instId];
-          const containerName = inst.stats().name;
+          const containerName = inst.data.stats.name;
           const exo = {
             out: '',
             err: '',
@@ -228,7 +241,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.stats().status = 'down';
+            inst.data.stats.status = 'down';
             logger.error('stop', {
               msg: `Failed to stop container "${containerName}"`,
               exo,
@@ -243,7 +256,20 @@ export function createInstanceOrchestration(): Module {
       };
 
       init()
-        .then(() => next())
+        .then(() => {
+          // setInterval(async () => {
+          //   for (const instId in insts) {
+          //     const inst = insts[instId];
+          //     if (inst.data.stats.status !== 'active') {
+          //       inst.alive = false;
+          //       if (inst.)
+          //     } else {
+
+          //     }
+          //   }
+          // }, 5000);
+          next();
+        })
         .catch((err) => next(err));
     },
   };
