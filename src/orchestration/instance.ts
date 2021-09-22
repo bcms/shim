@@ -2,7 +2,7 @@ import * as path from 'path';
 import type { FS } from '@becomes/purple-cheetah/types';
 import * as crypto from 'crypto';
 import { ShimConfig } from '../config';
-import type { Instance } from '../types';
+import type { Instance, InstanceStatus } from '../types';
 import { Http, System } from '../util';
 import { useLogger } from '@becomes/purple-cheetah';
 
@@ -10,6 +10,7 @@ export async function createInstance(config: {
   instanceId: string;
   port: string;
   fs: FS;
+  status?: InstanceStatus;
 }): Promise<Instance> {
   let secret = '';
   const logger = useLogger({ name: 'Instance' });
@@ -21,7 +22,13 @@ export async function createInstance(config: {
       name: `bcms-instance-${config.instanceId}`,
       port: config.port,
       ip: '172.17.0.1',
-      status: 'unknown',
+      status: config.status ? config.status : 'unknown',
+      previousStatus: 'unknown',
+    },
+    setStatus(status) {
+      self.stats.previousStatus = ('' +
+        self.stats.status) as InstanceStatus;
+      self.stats.status = status;
     },
     async checkHealth() {
       const place = 'checkHealth';
@@ -105,5 +112,22 @@ export async function createInstance(config: {
     },
   };
   await self.createSecret();
+  await config.fs.mkdir(
+    path.join(process.cwd(), 'storage', config.instanceId, 'plugins'),
+  );
+  await config.fs.mkdir(
+    path.join(
+      process.cwd(),
+      'storage',
+      config.instanceId,
+      'functions',
+    ),
+  );
+  await config.fs.mkdir(
+    path.join(process.cwd(), 'storage', config.instanceId, 'events'),
+  );
+  await config.fs.mkdir(
+    path.join(process.cwd(), 'storage', config.instanceId, 'jobs'),
+  );
   return self;
 }

@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { Module } from '@becomes/purple-cheetah/types';
 import { createDocker, createInstance } from '.';
@@ -55,14 +56,43 @@ export function createInstanceOrchestration(): Module {
           }
         }
       }
+      async function checkInstances() {
+        for (const instId in insts) {
+          const inst = insts[instId];
+          if (inst.data.stats.status === 'active') {
+            if (await inst.data.checkHealth()) {
+              inst.alive = true;
+            } else {
+              inst.alive = false;
+              // TODO: Handler repeated fails.
+            }
+          }
+          if (inst.alive) {
+            // Alive instance logic
+          } else {
+            if (inst.data.stats.status === 'active') {
+              // TODO: Handle non-alive active instances.
+            } else if (inst.data.stats.status === 'unknown') {
+              if (await Orchestration.run(instId)) {
+                inst.data.setStatus('active');
+                inst.alive = true;
+              }
+            } else if (inst.data.stats.status === 'down') {
+              if (await Orchestration.start(instId)) {
+                inst.data.setStatus('active');
+                inst.alive = true;
+              }
+            }
+          }
+        }
+        setTimeout(() => {
+          checkInstances().catch((error) => {
+            logger.error('checkInstances', error);
+          });
+        }, 5000);
+      }
 
       async function init() {
-        if (!ShimConfig.manage) {
-          /**
-           * Instances should not be managed.
-           */
-          return;
-        }
         /**
          * List of available instances vie Docker CLI.
          */
@@ -76,6 +106,7 @@ export function createInstanceOrchestration(): Module {
                 instanceId: inspect.id,
                 fs,
                 port: inspect.port,
+                status: 'active',
               }),
               alive: false,
             };
@@ -89,16 +120,12 @@ export function createInstanceOrchestration(): Module {
                 }),
                 alive: false,
               };
-              await Orchestration.start(inspect.id);
-            } else {
-              insts[inspect.id].data.stats.status = 'active';
             }
           } else {
             await Orchestration.remove(inspect.id);
           }
         }
         const instIds = Service.license.getInstanceIds();
-        console.log(instIds);
         for (let i = 0; i < instIds.length; i++) {
           const instId = instIds[i];
           if (!insts[instId]) {
@@ -110,8 +137,27 @@ export function createInstanceOrchestration(): Module {
               }),
               alive: true,
             };
-            await Orchestration.start(instId);
           }
+        }
+
+        if (ShimConfig.manage) {
+          checkInstances().catch((error) => {
+            logger.error('checkInstances', error);
+          });
+        } else {
+          for (const instId in insts) {
+            insts[instId].data.setStatus('active');
+          }
+          setInterval(async () => {
+            for (const instId in insts) {
+              const inst = insts[instId];
+              if (await inst.data.checkHealth()) {
+                inst.alive = true;
+              } else {
+                inst.alive = false;
+              }
+            }
+          }, 5000);
         }
       }
 
@@ -160,18 +206,22 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.data.stats.status = 'down-to-error';
+            inst.data.setStatus('down-to-error');
             logger.error('remove', {
               msg: `Failed to remove container "${containerName}"`,
               exo,
             });
+            return false;
           } else {
+            inst.data.setStatus('unknown');
+            inst.alive = false;
             logger.info(
               'remove',
               `Container "${containerName}" removed.`,
             );
-            delete insts[instId];
+            // delete insts[instId];
           }
+          return true;
         }
       };
       Orchestration.restart = async (instId) => {
@@ -187,18 +237,20 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.data.stats.status = 'down';
+            inst.data.setStatus('down-to-error');
             logger.error('restart', {
               msg: `Failed to restart container "${containerName}"`,
               exo,
             });
+            return false;
           } else {
-            inst.data.stats.status = 'active';
+            inst.data.setStatus('active');
             logger.info(
               'restart',
               `Container "${containerName}" restarted.`,
             );
           }
+          return true;
         }
       };
       Orchestration.start = async (instId) => {
@@ -214,17 +266,19 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.data.stats.status = 'active';
+            inst.data.setStatus('down-to-error');
             logger.error('start', {
               msg: `Failed to start container "${containerName}"`,
               exo,
             });
+            return false;
           } else {
-            inst.data.stats.status = 'down-to-error';
+            inst.data.setStatus('active');
             logger.info(
               'start',
               `Container "${containerName}" started.`,
             );
+            return true;
           }
         }
       };
@@ -241,17 +295,72 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
-            inst.data.stats.status = 'down';
+            inst.data.setStatus('down-to-error');
             logger.error('stop', {
               msg: `Failed to stop container "${containerName}"`,
               exo,
             });
+            return false;
           } else {
+            inst.data.setStatus('down');
             logger.info(
               'stop',
               `Container "${containerName}" stopped.`,
             );
           }
+          return true;
+        }
+      };
+      Orchestration.run = async (instId) => {
+        if (insts[instId]) {
+          const inst = insts[instId];
+          const containerName = inst.data.stats.name;
+          const exo = {
+            out: '',
+            err: '',
+          };
+          const instanceBasePath = path.join(
+            process.cwd(),
+            'storage',
+            instId,
+          );
+          await System.exec(
+            [
+              'docker',
+              'run',
+              '-d',
+              '-p',
+              `${inst.data.stats.port}:${inst.data.stats.port}`,
+              '-v',
+              '/var/run/docker.sock:/var/run/docker.sock',
+              '-v',
+              `${instanceBasePath}/plugins:/app/plugins`,
+              '-v',
+              `${instanceBasePath}/functions:/app/functions`,
+              '-v',
+              `${instanceBasePath}/events:/app/events`,
+              '-v',
+              `${instanceBasePath}/jobs:/app/jobs`,
+              '--name',
+              containerName,
+              'becomes/cms-backend:latest',
+            ].join(' '),
+            { onChunk: execHelper(exo), doNotThrowError: true },
+          ).awaiter;
+          if (exo.err) {
+            inst.data.setStatus('down-to-error');
+            logger.error('run', {
+              msg: `Failed to run container "${containerName}"`,
+              exo,
+            });
+            return false;
+          } else {
+            logger.info(
+              'run',
+              `Container "${containerName}" started.`,
+            );
+          }
+          return true;
         }
       };
 

@@ -5,8 +5,9 @@ export interface Orchestration {
     query?: (e: Instance) => boolean | undefined,
   ): InstanceStats[];
   getInstance(instId: string): Instance | undefined;
-  restart(instId: string): Promise<void>;
-  start(instId: string): Promise<void>;
-  stop(instId: string): Promise<void>;
-  remove(instId: string): Promise<void>;
+  restart(instId: string): Promise<boolean>;
+  start(instId: string): Promise<boolean>;
+  stop(instId: string): Promise<boolean>;
+  remove(instId: string): Promise<boolean>;
+  run(instId: string): Promise<boolean>;
 }

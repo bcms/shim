@@ -11,11 +11,13 @@ export interface InstanceStats {
   ip: string;
   port: string;
   status: InstanceStatus;
+  previousStatus: InstanceStatus;
 }
 
 export interface Instance {
   stats: InstanceStats;
   createSecret(): Promise<string>;
+  setStatus(status: InstanceStatus): void;
   getSecret(): string;
   checkHealth(): Promise<boolean>;
   /**
