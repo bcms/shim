@@ -68,7 +68,7 @@ export function createInstanceOrchestration(): Module {
             }
           }
           if (inst.alive) {
-            // Alive instance logic
+            // TODO: Alive instance logic
           } else {
             if (inst.data.stats.status === 'active') {
               // TODO: Handle non-alive active instances.
@@ -108,7 +108,7 @@ export function createInstanceOrchestration(): Module {
                 port: inspect.port,
                 status: 'active',
               }),
-              alive: false,
+              alive: true,
             };
             if (!inspect.up) {
               await Orchestration.remove(inspect.id);
@@ -118,7 +118,7 @@ export function createInstanceOrchestration(): Module {
                   fs,
                   port: nextPort(),
                 }),
-                alive: false,
+                alive: true,
               };
             }
           } else {
