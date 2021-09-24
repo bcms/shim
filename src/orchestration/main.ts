@@ -23,6 +23,8 @@ export function createInstanceOrchestration(): Module {
         [id: string]: {
           data: Instance;
           alive: boolean;
+          err: string;
+          safe: boolean;
         };
       } = {};
       const fs = useFS();
@@ -64,23 +66,57 @@ export function createInstanceOrchestration(): Module {
               inst.alive = true;
             } else {
               inst.alive = false;
-              // TODO: Handler repeated fails.
             }
           }
-          if (inst.alive) {
-            // TODO: Alive instance logic
-          } else {
+          if (!inst.alive) {
             if (inst.data.stats.status === 'active') {
-              // TODO: Handle non-alive active instances.
+              await Orchestration.restart(instId);
             } else if (inst.data.stats.status === 'unknown') {
-              if (await Orchestration.run(instId)) {
-                inst.data.setStatus('active');
-                inst.alive = true;
-              }
+              await Orchestration.run(instId);
             } else if (inst.data.stats.status === 'down') {
-              if (await Orchestration.start(instId)) {
-                inst.data.setStatus('active');
-                inst.alive = true;
+              await Orchestration.start(instId);
+            } else if (inst.data.stats.status === 'down-to-error') {
+              if (
+                inst.data.stats.previousStatus !== 'down-to-error'
+              ) {
+                const date = new Date();
+                const logName = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}.log`;
+                await Service.cloudConnection.log({
+                  instanceId: instId,
+                  date: Date.now(),
+                  err: inst.err,
+                  shimLog: (
+                    await fs.read(
+                      path.join(
+                        process.cwd(),
+                        'storage',
+                        'logs',
+                        logName,
+                      ),
+                    )
+                  ).toString(),
+                  instLog: (
+                    await fs.read(
+                      path.join(
+                        process.cwd(),
+                        'storage',
+                        'logs',
+                        logName,
+                      ),
+                    )
+                  ).toString(),
+                });
+                logger.warn(
+                  'checkInstances',
+                  `Starting safe mode for ${instId}`,
+                );
+                inst.safe = true;
+                if (await Orchestration.remove(instId)) {
+                  await Orchestration.start(instId);
+                  inst.data.stats.previousStatus = 'down-to-error';
+                } else {
+                  inst.data.setStatus('down-to-error');
+                }
               }
             }
           }
@@ -101,26 +137,19 @@ export function createInstanceOrchestration(): Module {
           const inspect = inspects[i];
           const license = Service.license.get(inspect.id);
           if (license) {
+            if (!inspect.up) {
+              await Orchestration.remove(inspect.id);
+            }
             insts[inspect.id] = {
               data: await createInstance({
                 instanceId: inspect.id,
                 fs,
-                port: inspect.port,
-                status: 'active',
+                port: nextPort(),
               }),
-              alive: true,
+              alive: false,
+              safe: false,
+              err: '',
             };
-            if (!inspect.up) {
-              await Orchestration.remove(inspect.id);
-              insts[inspect.id] = {
-                data: await createInstance({
-                  instanceId: inspect.id,
-                  fs,
-                  port: nextPort(),
-                }),
-                alive: true,
-              };
-            }
           } else {
             await Orchestration.remove(inspect.id);
           }
@@ -135,7 +164,9 @@ export function createInstanceOrchestration(): Module {
                 instanceId: instId,
                 port: nextPort(),
               }),
-              alive: true,
+              alive: false,
+              safe: false,
+              err: '',
             };
           }
         }
@@ -206,6 +237,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.err = exo.err;
             inst.data.setStatus('down-to-error');
             logger.error('remove', {
               msg: `Failed to remove container "${containerName}"`,
@@ -214,6 +246,7 @@ export function createInstanceOrchestration(): Module {
             return false;
           } else {
             inst.data.setStatus('unknown');
+            inst.err = '';
             inst.alive = false;
             logger.info(
               'remove',
@@ -237,6 +270,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.err = exo.err;
             inst.data.setStatus('down-to-error');
             logger.error('restart', {
               msg: `Failed to restart container "${containerName}"`,
@@ -244,6 +278,7 @@ export function createInstanceOrchestration(): Module {
             });
             return false;
           } else {
+            inst.err = '';
             inst.data.setStatus('active');
             logger.info(
               'restart',
@@ -266,6 +301,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.err = exo.err;
             inst.data.setStatus('down-to-error');
             logger.error('start', {
               msg: `Failed to start container "${containerName}"`,
@@ -273,6 +309,7 @@ export function createInstanceOrchestration(): Module {
             });
             return false;
           } else {
+            inst.err = '';
             inst.data.setStatus('active');
             logger.info(
               'start',
@@ -295,6 +332,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.err = exo.err;
             inst.data.setStatus('down-to-error');
             logger.error('stop', {
               msg: `Failed to stop container "${containerName}"`,
@@ -302,6 +340,7 @@ export function createInstanceOrchestration(): Module {
             });
             return false;
           } else {
+            inst.err = '';
             inst.data.setStatus('down');
             logger.info(
               'stop',
@@ -324,6 +363,18 @@ export function createInstanceOrchestration(): Module {
             'storage',
             instId,
           );
+          const bindings = inst.safe
+            ? []
+            : [
+                '-v',
+                `${instanceBasePath}/plugins:/app/plugins`,
+                '-v',
+                `${instanceBasePath}/functions:/app/functions`,
+                '-v',
+                `${instanceBasePath}/events:/app/events`,
+                '-v',
+                `${instanceBasePath}/jobs:/app/jobs`,
+              ];
           await System.exec(
             [
               'docker',
@@ -333,14 +384,7 @@ export function createInstanceOrchestration(): Module {
               `${inst.data.stats.port}:${inst.data.stats.port}`,
               '-v',
               '/var/run/docker.sock:/var/run/docker.sock',
-              '-v',
-              `${instanceBasePath}/plugins:/app/plugins`,
-              '-v',
-              `${instanceBasePath}/functions:/app/functions`,
-              '-v',
-              `${instanceBasePath}/events:/app/events`,
-              '-v',
-              `${instanceBasePath}/jobs:/app/jobs`,
+              ...bindings,
               '--name',
               containerName,
               'becomes/cms-backend:latest',
@@ -348,6 +392,7 @@ export function createInstanceOrchestration(): Module {
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
+            inst.err = exo.err;
             inst.data.setStatus('down-to-error');
             logger.error('run', {
               msg: `Failed to run container "${containerName}"`,
@@ -355,30 +400,20 @@ export function createInstanceOrchestration(): Module {
             });
             return false;
           } else {
+            inst.err = '';
+            inst.data.setStatus('active');
             logger.info(
               'run',
               `Container "${containerName}" started.`,
             );
           }
+
           return true;
         }
       };
 
       init()
-        .then(() => {
-          // setInterval(async () => {
-          //   for (const instId in insts) {
-          //     const inst = insts[instId];
-          //     if (inst.data.stats.status !== 'active') {
-          //       inst.alive = false;
-          //       if (inst.)
-          //     } else {
-
-          //     }
-          //   }
-          // }, 5000);
-          next();
-        })
+        .then(() => next())
         .catch((err) => next(err));
     },
   };

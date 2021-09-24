@@ -1,11 +1,16 @@
 import * as os from 'os';
 import { useLogger } from '@becomes/purple-cheetah';
 import { ShimConfig } from '../config';
-import type { CloudConnection, SecurityObject } from '../types';
+import type {
+  CloudConnection,
+  Instance,
+  SecurityObject,
+} from '../types';
 import { General, Http, System } from '../util';
 import { HTTPStatus, Module } from '@becomes/purple-cheetah/types';
 import { getHeapStatistics } from 'v8';
 import { Service } from './main';
+import { Orchestration } from '../orchestration';
 
 interface ServerStats {
   cpu: {
@@ -34,7 +39,6 @@ export function createCloudConnectionService(): Module {
     [instanceId: string]: {
       cloud: CloudConnection;
       self: {
-        available: boolean;
         checkAfter: number;
       };
     };
@@ -91,7 +95,7 @@ export function createCloudConnectionService(): Module {
     return false;
   }
   async function sendStats(
-    instanceId: string,
+    inst: Instance,
     channel: string,
   ): Promise<boolean> {
     try {
@@ -99,14 +103,17 @@ export function createCloudConnectionService(): Module {
       const response = await http.send<SecurityObject>({
         path: `/conn/${channel}`,
         method: 'POST',
-        data: Service.security.enc(instanceId, stats),
+        data: Service.security.enc(inst.stats.id, {
+          ...stats,
+          instStatus: inst.stats.status,
+        }),
         headers: {
-          iid: instanceId,
+          iid: inst.stats.id,
         },
       });
       if (response.status !== 200) {
         logger.warn(
-          'register',
+          'sendStats',
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           `${response.status} - ${(response.data as any).message}`,
         );
@@ -114,7 +121,7 @@ export function createCloudConnectionService(): Module {
       }
       const resObj: {
         ok: string;
-      } = Service.security.dec(instanceId, response.data);
+      } = Service.security.dec(inst.stats.id, response.data);
       return !!resObj.ok;
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -135,6 +142,7 @@ export function createCloudConnectionService(): Module {
               const instIds = Service.license.getInstanceIds();
               for (let i = 0; i < instIds.length; i++) {
                 const instId = instIds[i];
+                const inst = Orchestration.getInstance(instId);
                 const connection = connections[instId];
                 if (!connection) {
                   connections[instId] = {
@@ -145,7 +153,6 @@ export function createCloudConnectionService(): Module {
                       sendStatsAfter: Date.now() - 1000,
                     },
                     self: {
-                      available: false,
                       checkAfter: -1000,
                     },
                   };
@@ -173,7 +180,7 @@ export function createCloudConnectionService(): Module {
                     ) {
                       if (
                         !(await sendStats(
-                          instId,
+                          inst,
                           connections[instId].cloud.channel,
                         ))
                       ) {
@@ -231,6 +238,35 @@ export function createCloudConnectionService(): Module {
               );
             }
             throw Error('Failed to send a request.');
+          }
+        },
+        async log(data) {
+          const con = connections[data.instanceId];
+          if (con) {
+            try {
+              const response = await http.send<SecurityObject>({
+                path: `/conn/${con.cloud.channel}/log`,
+                method: 'POST',
+                data: Service.security.enc(data.instanceId, data),
+                headers: {
+                  iid: data.instanceId,
+                },
+              });
+              if (response.status !== 200) {
+                logger.warn(
+                  'log',
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  `${response.status} - ${
+                    (response.data as any).message
+                  }`,
+                );
+              }
+              Service.security.dec(data.instanceId, response.data);
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.error(e);
+              logger.error('log', e);
+            }
           }
         },
       };

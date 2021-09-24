@@ -5,6 +5,13 @@ export interface CloudConnectionService {
   init(): void;
   http: Http;
   isConnected(instanceId: string): boolean;
+  log(data: {
+    instanceId: string;
+    err: string;
+    shimLog: string;
+    instLog: string;
+    date: number;
+  }): Promise<void>;
   send<T>(
     instanceId: string,
     uri: string,
