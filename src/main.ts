@@ -4,7 +4,6 @@ import {
   createPurpleCheetah,
   updateLogger,
 } from '@becomes/purple-cheetah';
-import { createFSDB } from '@becomes/purple-cheetah-mod-fsdb';
 import { ShimConfig } from './config';
 import {
   HealthController,
@@ -39,9 +38,6 @@ async function main() {
       SecurityMiddleware,
     ],
     modules: [
-      createFSDB({
-        output: 'storage/shim-db',
-      }),
       createCloudConnectionService(),
       createSecurityService(),
       createLicenseService(),
