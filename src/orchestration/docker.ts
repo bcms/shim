@@ -18,16 +18,45 @@ export function createDocker(): Docker {
   }
 
   return {
+    async containerLogs(name, lines) {
+      const exo = {
+        out: '',
+        err: '',
+      };
+      try {
+        await System.exec(`docker logs --tail ${lines} ${name}`, {
+          onChunk: execHelper(exo),
+        }).awaiter;
+      } catch (error) {
+        throw Error(exo.err);
+      }
+      return exo.out;
+    },
+    async inspectContainer(name) {
+      const exo = {
+        out: '',
+        err: '',
+      };
+      try {
+        await System.exec(`docker inspect ${name}`, {
+          onChunk: execHelper(exo),
+        }).awaiter;
+      } catch (error) {
+        throw Error(exo.err);
+      }
+      return exo.out;
+    },
     async inspectContainers() {
       const exo = {
         out: '',
         err: '',
       };
       try {
-        await System.exec('docker ps -a', { onChunk: execHelper(exo) })
-          .awaiter;
+        await System.exec('docker ps -a', {
+          onChunk: execHelper(exo),
+        }).awaiter;
       } catch (error) {
-        throw Error(error)
+        throw Error(exo.err);
       }
       let lines = exo.out.split('\n');
       const headerIndexes = [0];

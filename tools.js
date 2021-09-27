@@ -56,7 +56,16 @@ function Tasks(tasks) {
     },
   };
 }
-function parseArgs(rawArgs) {
+/**
+ * 
+ * @param {string[]} rawArgs 
+ */
+ function parseArgs(rawArgs) {
+  /**
+   * @type {{
+   *  [key: string]: string,
+   * }}
+   */
   const args = {};
   let i = 2;
   while (i < rawArgs.length) {
@@ -72,22 +81,34 @@ function parseArgs(rawArgs) {
       i = i + 2;
     }
   }
+  /**
+   * 
+   * @param {string} name 
+   * @param {'string' | 'boolean'} type 
+   * @returns {string | boolean}
+   */
+  function getArg(
+    name,
+    type,
+  ) {
+    if (type === 'string') {
+      return args[name];
+    } else {
+      return (args[name] === '' || args[name] === 'true' || false);
+    }
+  }
   return {
-    bundle:
-      args['--bundle'] === '' || args['--bundle'] === 'true' || false,
-    link: args['--link'] === '' || args['--link'] === 'true' || false,
-    unlink:
-      args['--unlink'] === '' || args['--unlink'] === 'true' || false,
-    publish:
-      args['--publish'] === '' ||
-      args['--publish'] === 'true' ||
-      false,
-    build:
-      args['--build'] === '' || args['--build'] === 'true' || false,
-    sudo: args['--sudo'] === '' || args['--sudo'] === 'true' || false,
-    pack: args['--pack'] === '' || args['--pack'] === 'true' || false,
+    bundle: getArg('--bundle', 'boolean' ),
+    link: getArg('--link', 'boolean' ),
+    unlink: getArg('--unlink', 'boolean' ),
+    publish: getArg('--publish', 'boolean' ),
+    build: getArg('--build', 'boolean' ),
+    sudo: getArg('--sudo', 'boolean' ),
+    pack: getArg('--pack', 'boolean' ),
+    createImage: getArg('--create-image', 'boolean' ),
   };
 }
+
 async function bundle() {
   const tasks = new Tasks([
     {
@@ -228,6 +249,40 @@ async function publish() {
 //     path.join(process.cwd(), 'dist', 'swagger', 'doc.yaml'),
 //   );
 // }
+async function createImage() {
+  const tasks = Tasks([
+    {
+      title: 'Create bundle',
+      task: async () => {
+        await bundle();
+      }
+    },
+    {
+      title: 'Create lib',
+      task: async () => {
+        await fse.copy(
+          path.join(process.cwd(), 'dist'), 
+        path.join(process.cwd(), 'lib'));
+        await fse.copy(
+          path.join(process.cwd(), 'Dockerfile'), 
+          path.join(process.cwd(), 'lib', 'Dockerfile'));
+      }
+    },
+    {
+      title: 'Create docker image',
+      task: async () => {
+        await spawn('docker', ['build', '.', '-t', 'becomes/cms-shim'])
+      }
+    },
+    {
+      title: 'Remove lib',
+      task: async () => {
+        await fse.remove(path.join(process.cwd(), 'lib'))
+      }
+    }
+  ])
+  await tasks.run()
+}
 
 async function main() {
   const options = parseArgs(process.argv);
@@ -243,6 +298,8 @@ async function main() {
     // await build();
   } else if (options.pack === true) {
     await pack();
+  } else if (options.createImage) {
+    await createImage();
   }
 }
 main().catch((error) => {

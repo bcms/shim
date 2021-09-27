@@ -3,7 +3,8 @@ export type InstanceStatus =
   | 'starting'
   | 'down'
   | 'down-to-error'
-  | 'unknown';
+  | 'unknown'
+  | 'restarting';
 
 export interface InstanceStats {
   id: string;
@@ -26,4 +27,38 @@ export interface Instance {
   streamLogs(
     onChunk: (chunk: string, type: 'stdout' | 'stderr') => void,
   ): { stop: () => void };
+}
+
+export interface InstanceConfig {
+  port: number;
+  local?: boolean;
+  jwt: {
+    scope: string;
+    secret: string;
+    expireIn: number;
+  };
+  database: {
+    prefix: string;
+    fs?: boolean;
+    mongodb?: {
+      selfHosted?: {
+        host: string;
+        port: number;
+        name: string;
+        user: string;
+        password: string;
+      };
+      atlas?: {
+        name: string;
+        user: string;
+        password: string;
+        cluster: string;
+      };
+    };
+  };
+  bodySizeLimit?: number;
+  plugins?: string[];
+  functions?: string[];
+  events?: string[];
+  jobs?: string[];
 }

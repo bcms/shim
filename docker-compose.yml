@@ -1,7 +1,9 @@
 version: '3.9'
 services:
   shim:
-    build: .
+    build:
+      context: '.'
+      dockerfile: 'Dockerfile.dev'
     ports:
       - '1282:1282'
     volumes:

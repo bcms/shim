@@ -5,7 +5,7 @@
   "main": "./main.js",
   "types": "./main.d.ts",
   "scripts": {
-    "start": "node dist/main.js",
+    "start": "node main.js",
     "start:local": "env-cmd -f .env.dev node main.js",
     "dev": "env-cmd -f .env.dev nodemon src/main.ts",
     "build:ts": "tsc -p .",
@@ -16,12 +16,12 @@
     "unlink": "node tools.js --unlink",
     "unlink:sudo": "node tools.js --unlink --sudo",
     "pack:dist": "node tools.js --pack",
+    "create:image": "node tools.js --create-image",
     "test": "mocha -r ts-node/register test/integration/*.test.ts --recursive --exit",
     "test:active": "mocha -r ts-node/register test/integration/*.active.test.ts --recursive --exit",
     "test:unit": "mocha -r ts-node/register test/unit/*.test.ts --recursive --exit",
     "test:active:unit": "mocha -r ts-node/register test/unit/*.active.test.ts --recursive --exit",
-    "lint": "eslint . --ext .ts",
-    "tmp": "nodemon src/tmp.ts"
+    "lint": "eslint . --ext .ts"
   },
   "repository": {
     "type": "git",

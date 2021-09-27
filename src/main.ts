@@ -2,6 +2,7 @@ import {
   createBodyParserMiddleware,
   createCorsMiddleware,
   createPurpleCheetah,
+  createRequestLoggerMiddleware,
   updateLogger,
 } from '@becomes/purple-cheetah';
 import { ShimConfig } from './config';
@@ -10,7 +11,7 @@ import {
   PluginController,
   UserController,
 } from './controllers';
-import { SecurityMiddleware } from './middleware/security';
+import { SecurityMiddleware } from './middleware';
 import { createInstanceOrchestration } from './orchestration';
 import {
   createCloudConnectionService,
@@ -35,6 +36,7 @@ async function main() {
     middleware: [
       createBodyParserMiddleware(),
       createCorsMiddleware(),
+      createRequestLoggerMiddleware(),
       SecurityMiddleware,
     ],
     modules: [

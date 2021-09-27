@@ -2,7 +2,11 @@ import * as path from 'path';
 import type { FS } from '@becomes/purple-cheetah/types';
 import * as crypto from 'crypto';
 import { ShimConfig } from '../config';
-import type { Instance, InstanceStatus } from '../types';
+import type {
+  Instance,
+  InstanceConfig,
+  InstanceStatus,
+} from '../types';
 import { Http, System } from '../util';
 import { useLogger } from '@becomes/purple-cheetah';
 
@@ -128,6 +132,50 @@ export async function createInstance(config: {
   );
   await config.fs.mkdir(
     path.join(process.cwd(), 'storage', config.instanceId, 'jobs'),
+  );
+  await config.fs.mkdir(
+    path.join(process.cwd(), 'storage', config.instanceId, 'logs'),
+  );
+  await config.fs.save(
+    path.join(
+      process.cwd(),
+      'storage',
+      config.instanceId,
+      'Dockerfile',
+    ),
+    [
+      // TODO: add dynamic image version
+      'FROM becomes/cms-backend',
+      'WORKDIR app',
+      'COPY . /app',
+      'ENTRYPOINT ["npm", "start"]',
+    ].join('\n'),
+  );
+  // TODO: add method to update config
+  // TODO: generate config from BCMS Cloud info.
+  await config.fs.save(
+    path.join(
+      process.cwd(),
+      'storage',
+      config.instanceId,
+      'bcms.config.js',
+    ),
+    `module.exports = ${JSON.stringify(
+      {
+        port: parseInt(self.stats.port),
+        database: {
+          prefix: 'bcms',
+          fs: true,
+        },
+        jwt: {
+          expireIn: 1200000,
+          scope: 'localhost',
+          secret: 'secret',
+        },
+      } as InstanceConfig,
+      null,
+      '  ',
+    )}`,
   );
   return self;
 }

@@ -58,6 +58,78 @@ export function createInstanceOrchestration(): Module {
           }
         }
       }
+      async function toSafe(instId: string) {
+        const inst = insts[instId];
+        const date = new Date();
+        const logName = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}.log`;
+        let shimLog = `No logs for ${logName}`;
+        let instLog = `No logs for ${logName}`;
+
+        if (
+          await fs.exist(
+            path.join(process.cwd(), 'storage', 'logs', logName),
+            true,
+          )
+        ) {
+          shimLog = (
+            await fs.read(
+              path.join(process.cwd(), 'storage', 'logs', logName),
+            )
+          ).toString();
+        }
+        if (
+          await fs.exist(
+            path.join(
+              process.cwd(),
+              'storage',
+              instId,
+              'logs',
+              logName,
+            ),
+            true,
+          )
+        ) {
+          instLog = (
+            await fs.read(
+              path.join(
+                process.cwd(),
+                'storage',
+                instId,
+                'logs',
+                logName,
+              ),
+            )
+          ).toString();
+        } else {
+          try {
+            instLog = await docker.containerLogs(
+              `bcms-instance-${instId}`,
+              300,
+            );
+          } catch (error) {
+            // Do nothing.
+          }
+        }
+
+        await Service.cloudConnection.log({
+          instanceId: instId,
+          date: Date.now(),
+          err: inst.err,
+          shimLog,
+          instLog,
+        });
+        logger.warn(
+          'checkInstances',
+          `Starting safe mode for ${instId}`,
+        );
+        inst.safe = true;
+        if (await Orchestration.remove(instId)) {
+          await Orchestration.start(instId);
+          inst.data.stats.previousStatus = 'down-to-error';
+        } else {
+          inst.data.setStatus('down-to-error');
+        }
+      }
       async function checkInstances() {
         for (const instId in insts) {
           const inst = insts[instId];
@@ -70,7 +142,11 @@ export function createInstanceOrchestration(): Module {
           }
           if (!inst.alive) {
             if (inst.data.stats.status === 'active') {
-              await Orchestration.restart(instId);
+              if (inst.data.stats.previousStatus === 'restarting') {
+                await toSafe(instId);
+              } else {
+                await Orchestration.restart(instId);
+              }
             } else if (inst.data.stats.status === 'unknown') {
               await Orchestration.run(instId);
             } else if (inst.data.stats.status === 'down') {
@@ -79,44 +155,7 @@ export function createInstanceOrchestration(): Module {
               if (
                 inst.data.stats.previousStatus !== 'down-to-error'
               ) {
-                const date = new Date();
-                const logName = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}.log`;
-                await Service.cloudConnection.log({
-                  instanceId: instId,
-                  date: Date.now(),
-                  err: inst.err,
-                  shimLog: (
-                    await fs.read(
-                      path.join(
-                        process.cwd(),
-                        'storage',
-                        'logs',
-                        logName,
-                      ),
-                    )
-                  ).toString(),
-                  instLog: (
-                    await fs.read(
-                      path.join(
-                        process.cwd(),
-                        'storage',
-                        'logs',
-                        logName,
-                      ),
-                    )
-                  ).toString(),
-                });
-                logger.warn(
-                  'checkInstances',
-                  `Starting safe mode for ${instId}`,
-                );
-                inst.safe = true;
-                if (await Orchestration.remove(instId)) {
-                  await Orchestration.start(instId);
-                  inst.data.stats.previousStatus = 'down-to-error';
-                } else {
-                  inst.data.setStatus('down-to-error');
-                }
+                await toSafe(instId);
               }
             }
           }
@@ -136,22 +175,22 @@ export function createInstanceOrchestration(): Module {
         for (let i = 0; i < inspects.length; i++) {
           const inspect = inspects[i];
           const license = Service.license.get(inspect.id);
-          if (license) {
-            if (!inspect.up) {
-              await Orchestration.remove(inspect.id);
-            }
-            insts[inspect.id] = {
-              data: await createInstance({
-                instanceId: inspect.id,
-                fs,
-                port: nextPort(),
-              }),
-              alive: false,
-              safe: false,
-              err: '',
-            };
-          } else {
-            await Orchestration.remove(inspect.id);
+          insts[inspect.id] = {
+            data: await createInstance({
+              instanceId: inspect.id,
+              fs,
+              port: nextPort(),
+            }),
+            alive: false,
+            safe: false,
+            err: '',
+          };
+          if (inspect.up) {
+            await Orchestration.stop(inspect.id);
+          }
+          await Orchestration.remove(inspect.id);
+          if (!license) {
+            delete insts[inspect.id];
           }
         }
         const instIds = Service.license.getInstanceIds();
@@ -238,9 +277,27 @@ export function createInstanceOrchestration(): Module {
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
-            inst.data.setStatus('down-to-error');
             logger.error('remove', {
               msg: `Failed to remove container "${containerName}"`,
+              exo,
+            });
+            return false;
+          } else {
+            logger.info(
+              'remove',
+              `Container "${containerName}" removed.`,
+            );
+            // delete insts[instId];
+          }
+          await System.exec(
+            ['docker', 'rmi', containerName].join(' '),
+            { onChunk: execHelper(exo), doNotThrowError: true },
+          ).awaiter;
+          if (exo.err) {
+            inst.err = exo.err;
+            inst.data.setStatus('down-to-error');
+            logger.error('remove', {
+              msg: `Failed to remove image "${containerName}"`,
               exo,
             });
             return false;
@@ -250,7 +307,7 @@ export function createInstanceOrchestration(): Module {
             inst.alive = false;
             logger.info(
               'remove',
-              `Container "${containerName}" removed.`,
+              `Image "${containerName}" removed.`,
             );
             // delete insts[instId];
           }
@@ -260,6 +317,8 @@ export function createInstanceOrchestration(): Module {
       Orchestration.restart = async (instId) => {
         if (insts[instId]) {
           const inst = insts[instId];
+          console.log(inst.data.stats);
+          inst.data.setStatus('restarting');
           const containerName = inst.data.stats.name;
           const exo = {
             out: '',
@@ -363,20 +422,22 @@ export function createInstanceOrchestration(): Module {
             'storage',
             instId,
           );
-          const bindings = inst.safe
-            ? []
-            : [
-                '-v',
-                `${instanceBasePath}/plugins:/app/plugins`,
-                '-v',
-                `${instanceBasePath}/functions:/app/functions`,
-                '-v',
-                `${instanceBasePath}/events:/app/events`,
-                '-v',
-                `${instanceBasePath}/jobs:/app/jobs`,
-              ];
+          // const bindings = inst.safe
+          //   ? []
+          //   : [
+          //       '-v',
+          //       `${instanceBasePath}/plugins:/app/plugins`,
+          //       '-v',
+          //       `${instanceBasePath}/functions:/app/functions`,
+          //       '-v',
+          //       `${instanceBasePath}/events:/app/events`,
+          //       '-v',
+          //       `${instanceBasePath}/jobs:/app/jobs`,
+          //     ];
           await System.exec(
             [
+              `cd ${instanceBasePath} &&`,
+              `docker build . -t ${containerName} &&`,
               'docker',
               'run',
               '-d',
@@ -384,10 +445,11 @@ export function createInstanceOrchestration(): Module {
               `${inst.data.stats.port}:${inst.data.stats.port}`,
               '-v',
               '/var/run/docker.sock:/var/run/docker.sock',
-              ...bindings,
+              '-v',
+              `${instanceBasePath}/logs:/app/logs`,
               '--name',
               containerName,
-              'becomes/cms-backend:latest',
+              containerName,
             ].join(' '),
             { onChunk: execHelper(exo), doNotThrowError: true },
           ).awaiter;
