@@ -6,6 +6,14 @@ export type InstanceStatus =
   | 'unknown'
   | 'restarting';
 
+export interface InstanceDomain {
+  name: string;
+  ssl?: {
+    key: string;
+    crt: string;
+  };
+}
+
 export interface InstanceStats {
   id: string;
   name: string;
@@ -13,6 +21,7 @@ export interface InstanceStats {
   port: string;
   status: InstanceStatus;
   previousStatus: InstanceStatus;
+  domains: InstanceDomain[];
 }
 
 export interface Instance {

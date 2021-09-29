@@ -2,7 +2,7 @@ import type { HTTPError } from '@becomes/purple-cheetah/types';
 import type { Http } from '../../util';
 
 export interface CloudConnectionService {
-  init(): void;
+  connect(): Promise<void>;
   http: Http;
   isConnected(instanceId: string): boolean;
   log(data: {

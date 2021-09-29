@@ -6,6 +6,7 @@ import { ShimConfig } from '../config';
 import { Service } from '../services';
 import type {
   Instance,
+  InstanceDomain,
   InstanceStats,
   Nginx,
   Orchestration as OrchestrationType,
@@ -157,15 +158,6 @@ export function createInstanceOrchestration(): Module {
       }
 
       async function init() {
-        nginx = await createNginx({
-          orch: Orchestration,
-          domains: [
-            {
-              instId: '61433d287f9de6009ec33940',
-              name: 'cohesion-first-instance.yourbcms.com'
-            }
-          ]
-        })
         /**
          * List of available instances vie Docker CLI.
          */
@@ -208,13 +200,27 @@ export function createInstanceOrchestration(): Module {
           }
         }
 
+        await Service.cloudConnection.connect();
         if (ShimConfig.manage) {
+          for (const instId in insts) {
+            const inst = insts[instId];
+            try {
+              const result = await Service.cloudConnection.send<{
+                domains: InstanceDomain[];
+              }>(instId, '/domains', {});
+              inst.data.stats.domains = result.domains;
+            } catch (error) {
+              logger.error('init-domains', error);
+            }
+          }
+          nginx = createNginx({ orch: Orchestration });
           checkInstances().catch((error) => {
             logger.error('checkInstances', error);
           });
         } else {
           for (const instId in insts) {
             insts[instId].data.setStatus('active');
+            insts[instId].alive = true;
           }
           setInterval(async () => {
             for (const instId in insts) {
@@ -256,7 +262,10 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'stop', containerName].join(' '),
-            { onChunk: System.execHelper(exo), doNotThrowError: true },
+            {
+              onChunk: System.execHelper(exo),
+              doNotThrowError: true,
+            },
           ).awaiter;
           if (exo.err) {
             logger.error('remove', {
@@ -271,7 +280,10 @@ export function createInstanceOrchestration(): Module {
           }
           await System.exec(
             ['docker', 'rm', containerName].join(' '),
-            { onChunk: System.execHelper(exo), doNotThrowError: true },
+            {
+              onChunk: System.execHelper(exo),
+              doNotThrowError: true,
+            },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -289,7 +301,10 @@ export function createInstanceOrchestration(): Module {
           }
           await System.exec(
             ['docker', 'rmi', containerName].join(' '),
-            { onChunk: System.execHelper(exo), doNotThrowError: true },
+            {
+              onChunk: System.execHelper(exo),
+              doNotThrowError: true,
+            },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -324,7 +339,10 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'restart', containerName].join(' '),
-            { onChunk: System.execHelper(exo), doNotThrowError: true },
+            {
+              onChunk: System.execHelper(exo),
+              doNotThrowError: true,
+            },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -355,7 +373,10 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'start', containerName].join(' '),
-            { onChunk: System.execHelper(exo), doNotThrowError: true },
+            {
+              onChunk: System.execHelper(exo),
+              doNotThrowError: true,
+            },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -386,7 +407,10 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'stop', containerName].join(' '),
-            { onChunk: System.execHelper(exo), doNotThrowError: true },
+            {
+              onChunk: System.execHelper(exo),
+              doNotThrowError: true,
+            },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -449,7 +473,10 @@ export function createInstanceOrchestration(): Module {
               containerName,
               containerName,
             ].join(' '),
-            { onChunk: System.execHelper(exo), doNotThrowError: true },
+            {
+              onChunk: System.execHelper(exo),
+              doNotThrowError: true,
+            },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -471,9 +498,6 @@ export function createInstanceOrchestration(): Module {
           return true;
         }
       };
-      Orchestration.findInstanceByDomainName(name) {
-
-      }
 
       init()
         .then(() => next())

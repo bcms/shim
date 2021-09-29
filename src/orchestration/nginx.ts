@@ -41,40 +41,7 @@ server {
   }
 }
 `;
-const instanceCloudProxyConfigHttp = `
-server {
-  listen @nport;
-  listen [::]:@nport;
-  server_name @domain;
 
-  client_max_body_size 105M;
-
-  location /api/socket/server {
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-
-    proxy_pass http://172.17.0.1:@port/api/socket/server/;
-  }
-  location /api {
-    proxy_set_header bcmsrip $remote_addr ;
-    proxy_pass http://172.17.0.1:@port/api;
-  }
-  location /sockjs-node {
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-
-    proxy_pass http://172.17.0.1:@port/sockjs-node;
-  }
-  location / {
-    proxy_set_header bcmsrip $remote_addr ;
-    proxy_pass http://172.17.0.1:@port/;
-  }
-}
-`;
 const instanceConfigHttps = `
 server {
   listen 443 ssl http2;
@@ -143,13 +110,10 @@ function getInstanceConfigHttp({
 
 export async function createNginx({
   orch,
-  domains,
 }: NginxConfig): Promise<Nginx> {
   const logger = useLogger({ name: 'Nginx' });
   const fs = useFS();
   const stringUtil = useStringUtility();
-  const portRangeSize =
-    ShimConfig.portRange.to - ShimConfig.portRange.from;
 
   const containerName = 'bcms-proxy';
   const nginxConfigFile = (await fs.read('proxy/nginx.conf'))
@@ -162,45 +126,53 @@ export async function createNginx({
   );
 
   async function updateConfig() {
+    const servers: string[] = [];
+    await fs.deleteDir('proxy/ssl');
+    const insts = orch.listInstances();
+    for (let i = 0; i < insts.length; i++) {
+      const inst = insts[i];
+      for (let j = 0; j < inst.domains.length; j++) {
+        const domain = inst.domains[j];
+        if (!domain.name.endsWith('yourbcms.com')) {
+          if (domain.ssl) {
+            await fs.save(
+              `proxy/ssl/${domain.name}/crt`,
+              domain.ssl.crt,
+            );
+            await fs.save(
+              `proxy/ssl/${domain.name}/key`,
+              domain.ssl.key,
+            );
+            await System.spawn('chmod', [
+              '600',
+              '`proxy/ssl/${domain.name}/key`',
+            ]);
+            servers.push(
+              getInstanceConfigHttps({
+                domain: domain.name,
+                port: inst.port,
+              }),
+            );
+          } else {
+            servers.push(
+              getInstanceConfigHttp({
+                domain: domain.name,
+                port: inst.port,
+              }),
+            );
+          }
+        }
+      }
+    }
+
     const config = nginxConfigFile.replace(
       nginxConfigInstChunk,
-      Object.keys(self.domains)
-        .map((instId) => {
-          const inst = orch.getInstance(instId);
-          const instDomainInfo = self.domains[instId];
-
-          return Object.keys(instDomainInfo)
-            .map((domainName) => {
-              const domain = self.domains[instId][domainName];
-              if (domain.ssl) {
-              } else {
-                return;
-              }
-            })
-            .join('\n');
-        })
-        .join('\n'),
+      servers.join('\n'),
     );
     await fs.save('nginx.conf', config);
   }
 
   const self: Nginx = {
-    domains: {},
-    async addDomain({ instId, domain }) {
-      if (!self.domains[instId]) {
-        self.domains[instId] = {};
-      }
-      if (!self.domains[instId][domain.name]) {
-        self.domains[instId][domain.name] = domain;
-        await updateConfig();
-      }
-    },
-    async removeDomain({ instId, name }) {
-      if (self.domains[instId] && self.domains[instId][name]) {
-        delete self.domains[instId][name];
-        await updateConfig();
-      }
-    },
     async stop() {
       const exo = {
         out: '',
@@ -276,6 +248,7 @@ export async function createNginx({
       }
     },
     async run() {
+      await updateConfig();
       await self.remove();
       const exo = {
         out: '',
@@ -306,6 +279,8 @@ export async function createNginx({
           `${ShimConfig.portRange.from}-${ShimConfig.portRange.to}:${ShimConfig.portRange.from}-${ShimConfig.portRange.to}`,
           '-p',
           '3000:1279',
+          '-v',
+          `${process.cwd()}/proxy/ssl:/etc/nginx/ssl`,
           '--name',
           containerName,
           containerName,
@@ -326,11 +301,6 @@ export async function createNginx({
       }
     },
   };
-
-  for (let i = 0; i < domains.length; i++) {
-    const d = domains[i];
-    self.domains[d.name] = d;
-  }
 
   return self;
 }

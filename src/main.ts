@@ -42,14 +42,12 @@ async function main() {
       SecurityMiddleware,
     ],
     modules: [
-      createCloudConnectionService(),
-      createSecurityService(),
       createLicenseService(),
+      createSecurityService(),
+      createCloudConnectionService(),
+
       createInstanceOrchestration(),
     ],
-    onReady() {
-      Service.cloudConnection.init();
-    },
   });
 }
 main().catch((error) => {
