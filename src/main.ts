@@ -13,6 +13,7 @@ import {
 } from './controllers';
 import { SecurityMiddleware } from './middleware';
 import { createInstanceOrchestration } from './orchestration';
+import { DefaultInstanceProxy } from './proxy';
 import {
   createCloudConnectionService,
   createLicenseService,
@@ -34,8 +35,9 @@ async function main() {
     port: process.env.PORT ? parseInt(process.env.PORT) : 1282,
     controllers: [UserController, PluginController, HealthController],
     middleware: [
-      createBodyParserMiddleware(),
       createCorsMiddleware(),
+      DefaultInstanceProxy,
+      createBodyParserMiddleware(),
       createRequestLoggerMiddleware(),
       SecurityMiddleware,
     ],

@@ -2,21 +2,6 @@ import type { Docker, InspectContainerInfo } from '../types';
 import { System } from '../util';
 
 export function createDocker(): Docker {
-  function execHelper(exo: {
-    out: string;
-    err: string;
-  }): (type: 'stdout' | 'stderr', chunk: string) => void {
-    exo.out = '';
-    exo.err = '';
-    return (type, chunk) => {
-      if (type === 'stdout') {
-        exo.out += chunk;
-      } else {
-        exo.err += chunk;
-      }
-    };
-  }
-
   return {
     async containerLogs(name, lines) {
       const exo = {
@@ -25,7 +10,7 @@ export function createDocker(): Docker {
       };
       try {
         await System.exec(`docker logs --tail ${lines} ${name}`, {
-          onChunk: execHelper(exo),
+          onChunk: System.execHelper(exo),
         }).awaiter;
       } catch (error) {
         throw Error(exo.err);
@@ -39,7 +24,7 @@ export function createDocker(): Docker {
       };
       try {
         await System.exec(`docker inspect ${name}`, {
-          onChunk: execHelper(exo),
+          onChunk: System.execHelper(exo),
         }).awaiter;
       } catch (error) {
         throw Error(exo.err);
@@ -53,7 +38,7 @@ export function createDocker(): Docker {
       };
       try {
         await System.exec('docker ps -a', {
-          onChunk: execHelper(exo),
+          onChunk: System.execHelper(exo),
         }).awaiter;
       } catch (error) {
         throw Error(exo.err);
@@ -108,7 +93,7 @@ export function createDocker(): Docker {
         const id = name.split('-')[2];
         let port = '';
         await System.exec(`docker inspect ${name}`, {
-          onChunk: execHelper(exo),
+          onChunk: System.execHelper(exo),
           doNotThrowError: true,
         }).awaiter;
         if (!exo.err && exo.out.startsWith('[')) {

@@ -83,6 +83,20 @@ export class System {
     });
     return output;
   }
+  static execHelper(exo: {
+    out: string;
+    err: string;
+  }): (type: 'stdout' | 'stderr', chunk: string) => void {
+    exo.out = '';
+    exo.err = '';
+    return (type, chunk) => {
+      if (type === 'stdout') {
+        exo.out += chunk;
+      } else {
+        exo.err += chunk;
+      }
+    };
+  }
   /**
    * In [kB]
    */

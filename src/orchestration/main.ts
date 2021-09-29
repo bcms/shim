@@ -7,9 +7,11 @@ import { Service } from '../services';
 import type {
   Instance,
   InstanceStats,
+  Nginx,
   Orchestration as OrchestrationType,
 } from '../types';
 import { System } from '../util';
+import { createNginx } from './nginx';
 
 export const Orchestration: OrchestrationType = {} as never;
 
@@ -28,21 +30,8 @@ export function createInstanceOrchestration(): Module {
         };
       } = {};
       const fs = useFS();
+      let nginx: Nginx;
 
-      function execHelper(exo: {
-        out: string;
-        err: string;
-      }): (type: 'stdout' | 'stderr', chunk: string) => void {
-        exo.out = '';
-        exo.err = '';
-        return (type, chunk) => {
-          if (type === 'stdout') {
-            exo.out += chunk;
-          } else {
-            exo.err += chunk;
-          }
-        };
-      }
       function nextPort() {
         const takenPorts = Object.keys(insts).map(
           (instId) => insts[instId].data.stats.port,
@@ -168,6 +157,15 @@ export function createInstanceOrchestration(): Module {
       }
 
       async function init() {
+        nginx = await createNginx({
+          orch: Orchestration,
+          domains: [
+            {
+              instId: '61433d287f9de6009ec33940',
+              name: 'cohesion-first-instance.yourbcms.com'
+            }
+          ]
+        })
         /**
          * List of available instances vie Docker CLI.
          */
@@ -258,7 +256,7 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'stop', containerName].join(' '),
-            { onChunk: execHelper(exo), doNotThrowError: true },
+            { onChunk: System.execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
             logger.error('remove', {
@@ -273,7 +271,7 @@ export function createInstanceOrchestration(): Module {
           }
           await System.exec(
             ['docker', 'rm', containerName].join(' '),
-            { onChunk: execHelper(exo), doNotThrowError: true },
+            { onChunk: System.execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -291,7 +289,7 @@ export function createInstanceOrchestration(): Module {
           }
           await System.exec(
             ['docker', 'rmi', containerName].join(' '),
-            { onChunk: execHelper(exo), doNotThrowError: true },
+            { onChunk: System.execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -326,7 +324,7 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'restart', containerName].join(' '),
-            { onChunk: execHelper(exo), doNotThrowError: true },
+            { onChunk: System.execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -357,7 +355,7 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'start', containerName].join(' '),
-            { onChunk: execHelper(exo), doNotThrowError: true },
+            { onChunk: System.execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -388,7 +386,7 @@ export function createInstanceOrchestration(): Module {
           };
           await System.exec(
             ['docker', 'stop', containerName].join(' '),
-            { onChunk: execHelper(exo), doNotThrowError: true },
+            { onChunk: System.execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -451,7 +449,7 @@ export function createInstanceOrchestration(): Module {
               containerName,
               containerName,
             ].join(' '),
-            { onChunk: execHelper(exo), doNotThrowError: true },
+            { onChunk: System.execHelper(exo), doNotThrowError: true },
           ).awaiter;
           if (exo.err) {
             inst.err = exo.err;
@@ -473,6 +471,9 @@ export function createInstanceOrchestration(): Module {
           return true;
         }
       };
+      Orchestration.findInstanceByDomainName(name) {
+
+      }
 
       init()
         .then(() => next())
