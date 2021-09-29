@@ -141,8 +141,9 @@ export function createCloudConnectionService(): Module {
             const instIds = Service.license.getInstanceIds();
             for (let i = 0; i < instIds.length; i++) {
               const instId = instIds[i];
-              const inst = Orchestration.getInstance(instId);
-              const connection = connections[instId];
+
+              const inst = Orchestration.main.getInstance(instId);
+              let connection = connections[instId];
               if (!connection) {
                 connections[instId] = {
                   cloud: {
@@ -155,51 +156,51 @@ export function createCloudConnectionService(): Module {
                     checkAfter: -1000,
                   },
                 };
-              } else {
-                if (!connection.cloud.connected) {
-                  if (connection.cloud.registerAfter < Date.now()) {
-                    if (await register(instId)) {
-                      connections[instId].cloud.connected = true;
-                      logger.info(
-                        'register',
-                        `Instance "${instId}" successfully registered to the cloud.`,
-                      );
-                    } else {
-                      logger.warn(
-                        'register',
-                        `Instance "${instId}" failed to register to the cloud.`,
-                      );
-                      connections[instId].cloud.registerAfter =
-                        Date.now() + 10000;
-                    }
+              }
+              connection = connections[instId];
+              if (!connection.cloud.connected) {
+                if (connection.cloud.registerAfter < Date.now()) {
+                  if (await register(instId)) {
+                    connections[instId].cloud.connected = true;
+                    logger.info(
+                      'register',
+                      `Instance "${instId}" successfully registered to the cloud.`,
+                    );
+                  } else {
+                    logger.warn(
+                      'register',
+                      `Instance "${instId}" failed to register to the cloud.`,
+                    );
+                    connections[instId].cloud.registerAfter =
+                      Date.now() + 10000;
                   }
-                } else {
-                  if (connection.cloud.sendStatsAfter < Date.now()) {
-                    if (
-                      !(await sendStats(
-                        inst,
-                        connections[instId].cloud.channel,
-                      ))
-                    ) {
-                      logger.warn(
-                        'connection',
-                        `Connection failed for "${instId}".`,
-                      );
-                      connections[instId].cloud.connected = false;
-                      connections[instId].cloud.registerAfter =
-                        Date.now() + 10000;
-                    } else {
-                      connections[instId].cloud.sendStatsAfter =
-                        Date.now() + 5000;
-                    }
-                  }
-                  // TODO: check instance state
                 }
+              } else {
+                if (connection.cloud.sendStatsAfter < Date.now()) {
+                  if (
+                    !(await sendStats(
+                      inst,
+                      connections[instId].cloud.channel,
+                    ))
+                  ) {
+                    logger.warn(
+                      'connection',
+                      `Connection failed for "${instId}".`,
+                    );
+                    connections[instId].cloud.connected = false;
+                    connections[instId].cloud.registerAfter =
+                      Date.now() + 10000;
+                  } else {
+                    connections[instId].cloud.sendStatsAfter =
+                      Date.now() + 5000;
+                  }
+                }
+                // TODO: check instance state
               }
             }
             setTimeout(async () => {
               await Service.cloudConnection.connect();
-            }, 1000);
+            }, 5000);
           }
         },
         isConnected(instanceId) {

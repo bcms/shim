@@ -1,12 +1,77 @@
-import {
-  useFS,
-  useLogger,
-  useStringUtility,
-} from '@becomes/purple-cheetah';
-import { ShimConfig } from '../config';
+import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { Nginx, NginxConfig } from '../types';
 import { System } from '../util';
 
+const nConfig = `
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+  worker_connections 768;
+}
+
+http {
+  sendfile on;
+  tcp_nopush on;
+  tcp_nodelay on;
+  keepalive_timeout 65;
+  types_hash_max_size 2048;
+  server_tokens off;
+
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+
+  ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+  ssl_prefer_server_ciphers on;
+
+  access_log /var/log/nginx/access.log;
+  error_log /var/log/nginx/error.log;
+
+  include /etc/nginx/conf.d/*.conf;
+  include /etc/nginx/sites-enabled/*;
+
+  server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+
+    client_max_body_size 105M;
+
+    location /_instance-proxy/api/socket/server {
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+      proxy_set_header Host $host;
+
+      proxy_pass http://172.17.0.1:1279/_instance-proxyapi/socket/server/;
+    }
+    location /_instance-proxy {
+      proxy_set_header bcmsrip $remote_addr ;
+      proxy_pass http://172.17.0.1:1279/_instance-proxy;
+    }
+  }
+
+  @instanceServers
+
+  ########
+  # Shim #
+  ########
+  server {
+    listen 3000;
+    listen [::]:3000;
+    server_name _;
+
+    client_max_body_size 105M;
+
+    location / {
+      proxy_set_header bcmsrip $remote_addr ;
+      proxy_pass http://172.17.0.1:1279/;
+    }
+  }
+}
+`;
 const instanceConfigHttp = `
 server {
   listen 80;
@@ -41,7 +106,6 @@ server {
   }
 }
 `;
-
 const instanceConfigHttps = `
 server {
   listen 443 ssl http2;
@@ -112,67 +176,102 @@ export async function createNginx({
   orch,
 }: NginxConfig): Promise<Nginx> {
   const logger = useLogger({ name: 'Nginx' });
-  const fs = useFS();
-  const stringUtil = useStringUtility();
+  const fs = useFS({
+    base: `${process.cwd()}`
+  });
 
   const containerName = 'bcms-proxy';
-  const nginxConfigFile = (await fs.read('proxy/nginx.conf'))
-    .toString()
-    .replace(/:1282/g, process.env.PORT || '1279');
-  const nginxConfigInstChunk = stringUtil.textBetween(
-    nginxConfigFile,
-    '# ---- INSTANCES START ---',
-    '# ---- INSTANCES END ----',
-  );
+  let configBuffer = '';
+  let lastConfig = '';
 
-  async function updateConfig() {
-    const servers: string[] = [];
-    await fs.deleteDir('proxy/ssl');
-    const insts = orch.listInstances();
-    for (let i = 0; i < insts.length; i++) {
-      const inst = insts[i];
-      for (let j = 0; j < inst.domains.length; j++) {
-        const domain = inst.domains[j];
-        if (!domain.name.endsWith('yourbcms.com')) {
-          if (domain.ssl) {
-            await fs.save(
-              `proxy/ssl/${domain.name}/crt`,
-              domain.ssl.crt,
-            );
-            await fs.save(
-              `proxy/ssl/${domain.name}/key`,
-              domain.ssl.key,
-            );
-            await System.spawn('chmod', [
-              '600',
-              '`proxy/ssl/${domain.name}/key`',
-            ]);
-            servers.push(
-              getInstanceConfigHttps({
-                domain: domain.name,
-                port: inst.port,
-              }),
-            );
-          } else {
-            servers.push(
-              getInstanceConfigHttp({
-                domain: domain.name,
-                port: inst.port,
-              }),
-            );
+  setTimeout(async () => {
+    if (configBuffer !== lastConfig) {
+      configBuffer = lastConfig + '';
+      await self.copyConfigToContainer();
+      await self.restart();
+    }
+  }, 5000);
+
+  const self: Nginx = {
+    async updateConfig() {
+      const servers: string[] = [];
+      if (await fs.exist('proxy/ssl')) {
+        await fs.deleteDir('proxy/ssl');
+      }
+      const insts = orch.listInstances();
+      for (let i = 0; i < insts.length; i++) {
+        const inst = insts[i];
+        for (let j = 0; j < inst.data.domains.length; j++) {
+          const domain = inst.data.domains[j];
+          if (!domain.name.endsWith('yourbcms.com')) {
+            if (domain.ssl) {
+              await fs.save(
+                `proxy/ssl/${domain.name}/crt`,
+                domain.ssl.crt,
+              );
+              await fs.save(
+                `proxy/ssl/${domain.name}/key`,
+                domain.ssl.key,
+              );
+              await System.spawn('chmod', [
+                '600',
+                '`proxy/ssl/${domain.name}/key`',
+              ]);
+              servers.push(
+                getInstanceConfigHttps({
+                  domain: domain.name,
+                  port: inst.stats.port,
+                }),
+              );
+            } else {
+              servers.push(
+                getInstanceConfigHttp({
+                  domain: domain.name,
+                  port: inst.stats.port,
+                }),
+              );
+            }
           }
         }
       }
-    }
 
-    const config = nginxConfigFile.replace(
-      nginxConfigInstChunk,
-      servers.join('\n'),
-    );
-    await fs.save('nginx.conf', config);
-  }
-
-  const self: Nginx = {
+      lastConfig = nConfig.replace(
+        '@instanceServers',
+        servers.join('\n'),
+      );
+      await fs.save(`proxy/nginx.conf`, lastConfig);
+    },
+    async copyConfigToContainer() {
+      const exo = {
+        out: '',
+        err: '',
+      };
+      await System.exec(
+        [
+          'docker',
+          'cp',
+          `proxy/nginx.conf`,
+          `${containerName}:/etc/nginx/nginx.conf`,
+        ].join(' '),
+        {
+          onChunk: System.execHelper(exo),
+          doNotThrowError: true,
+        },
+      ).awaiter;
+      if (exo.err) {
+        logger.error('copyConfigToContainer', {
+          msg: `Failed to copy config to the container`,
+          exo,
+        });
+        return false;
+      } else {
+        logger.info(
+          'copyConfigToContainer',
+          `Config copied to the container.`,
+        );
+        return true;
+      }
+    },
     async stop() {
       const exo = {
         out: '',
@@ -187,8 +286,10 @@ export async function createNginx({
           msg: `Failed to stop container`,
           exo,
         });
+        return false;
       } else {
         logger.info('stop', `Container stopped.`);
+        return true;
       }
     },
     async start() {
@@ -205,16 +306,18 @@ export async function createNginx({
       ).awaiter;
       if (exo.err) {
         logger.error('start', {
-          msg: `Failed to stop container`,
+          msg: `Failed to start container`,
           exo,
         });
+        return false;
       } else {
-        logger.info('start', `Container stopped.`);
+        logger.info('start', `Container started.`);
+        return true;
       }
     },
     async restart() {
       await self.stop();
-      await self.start();
+      return await self.start();
     },
     async remove() {
       await self.stop();
@@ -243,12 +346,14 @@ export async function createNginx({
           msg: `Failed to remove image`,
           exo,
         });
+        return false;
       } else {
         logger.info('remove', `Image removed.`);
+        return true;
       }
     },
     async run() {
-      await updateConfig();
+      await self.updateConfig();
       await self.remove();
       const exo = {
         out: '',
@@ -276,9 +381,9 @@ export async function createNginx({
           'run',
           '-d',
           '-p',
-          `${ShimConfig.portRange.from}-${ShimConfig.portRange.to}:${ShimConfig.portRange.from}-${ShimConfig.portRange.to}`,
+          `80:80`,
           '-p',
-          '3000:1279',
+          '3000:3000',
           '-v',
           `${process.cwd()}/proxy/ssl:/etc/nginx/ssl`,
           '--name',
@@ -295,9 +400,10 @@ export async function createNginx({
           msg: `Failed to run the container`,
           exo,
         });
-        return;
+        return false;
       } else {
         logger.info('run', `Container started.`);
+        return true;
       }
     },
   };

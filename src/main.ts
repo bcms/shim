@@ -18,7 +18,6 @@ import {
   createCloudConnectionService,
   createLicenseService,
   createSecurityService,
-  Service,
 } from './services';
 
 async function main() {
@@ -32,7 +31,7 @@ async function main() {
   }
   updateLogger({ output: 'storage/logs' });
   createPurpleCheetah({
-    port: process.env.PORT ? parseInt(process.env.PORT) : 1282,
+    port: process.env.PORT ? parseInt(process.env.PORT) : 1279,
     controllers: [UserController, PluginController, HealthController],
     middleware: [
       createCorsMiddleware(),
@@ -42,8 +41,8 @@ async function main() {
       SecurityMiddleware,
     ],
     modules: [
-      createLicenseService(),
       createSecurityService(),
+      createLicenseService(),
       createCloudConnectionService(),
 
       createInstanceOrchestration(),

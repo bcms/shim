@@ -21,15 +21,50 @@ export interface InstanceStats {
   port: string;
   status: InstanceStatus;
   previousStatus: InstanceStatus;
+}
+
+// eslint-disable-next-line no-shadow
+export enum InstanceFJEType {
+  FUNCTION = 'F',
+  JOB = 'J',
+  EVENT = 'E',
+}
+
+export interface InstanceFJE {
+  type: InstanceFJEType;
+  hash: string;
+  name: string;
+  code?: string;
+}
+
+export interface InstanceData {
   domains: InstanceDomain[];
+  functions: InstanceFJE[];
+  jobs: InstanceFJE[];
+  events: InstanceFJE[];
+}
+
+export interface InstanceUpdateData {
+  domains?: InstanceDomain[];
+  functions?: InstanceFJE[];
+  jobs?: InstanceFJE[];
+  events?: InstanceFJE[];
+}
+export interface InstanceUpdateResult {
+  domains: boolean;
+  functions: boolean;
+  events: boolean;
+  jobs: boolean;
 }
 
 export interface Instance {
   stats: InstanceStats;
+  data: InstanceData;
   createSecret(): Promise<string>;
   setStatus(status: InstanceStatus): void;
   getSecret(): string;
   checkHealth(): Promise<boolean>;
+  update(data: InstanceUpdateData): Promise<InstanceUpdateResult>;
   /**
    * @returns A function which will stop streaming.
    */

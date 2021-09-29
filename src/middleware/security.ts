@@ -125,7 +125,7 @@ export const SecurityMiddleware = createMiddleware({
         next(errorHandler.occurred(HTTPStatus.FORBIDDEN, 'Blocked.'));
         return;
       }
-      const instance = Orchestration.getInstance(instanceId);
+      const instance = Orchestration.main.getInstance(instanceId);
       // const instanceSecret = Service.cloudConnection.getSecret(instanceId);
       if (!instance) {
         next(

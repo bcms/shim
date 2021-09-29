@@ -6,6 +6,7 @@ import type {
   Instance,
   InstanceConfig,
   InstanceStatus,
+  InstanceUpdateResult,
 } from '../types';
 import { Http, System } from '../util';
 import { useLogger } from '@becomes/purple-cheetah';
@@ -28,6 +29,12 @@ export async function createInstance(config: {
       ip: '172.17.0.1',
       status: config.status ? config.status : 'unknown',
       previousStatus: 'unknown',
+    },
+    data: {
+      domains: [],
+      events: [],
+      functions: [],
+      jobs: [],
     },
     setStatus(status) {
       self.stats.previousStatus = ('' +
@@ -90,6 +97,81 @@ export async function createInstance(config: {
     },
     getSecret() {
       return secret;
+    },
+    async update(data) {
+      const output: InstanceUpdateResult = {
+        domains: !!data.domains,
+        events: !!data.events,
+        functions: !!data.functions,
+        jobs: !!data.jobs,
+      };
+      if (data.domains) {
+        self.data.domains = data.domains;
+      }
+      if (data.functions) {
+        self.data.functions = [];
+        const basePath = `storage/${self.stats.id}/functions`;
+        if (await config.fs.exist(basePath)) {
+          await config.fs.deleteDir(basePath);
+        }
+        await config.fs.mkdir(basePath);
+
+        for (let i = 0; i < data.functions.length; i++) {
+          const item = data.functions[i];
+          self.data.functions.push({
+            hash: item.hash,
+            name: item.name,
+            type: item.type,
+          });
+          await config.fs.save(
+            `${basePath}/${item.hash}.js`,
+            item.code,
+          );
+        }
+      }
+      if (data.events) {
+        self.data.events = [];
+        const basePath = `storage/${self.stats.id}/events`;
+        if (await config.fs.exist(basePath)) {
+          await config.fs.deleteDir(basePath);
+        }
+        await config.fs.mkdir(basePath);
+
+        for (let i = 0; i < data.events.length; i++) {
+          const item = data.events[i];
+          self.data.events.push({
+            hash: item.hash,
+            name: item.name,
+            type: item.type,
+          });
+          await config.fs.save(
+            `${basePath}/${item.hash}.js`,
+            item.code,
+          );
+        }
+      }
+      if (data.jobs) {
+        self.data.jobs = [];
+        const basePath = `storage/${self.stats.id}/jobs`;
+        if (await config.fs.exist(basePath)) {
+          await config.fs.deleteDir(basePath);
+        }
+        await config.fs.mkdir(basePath);
+
+        for (let i = 0; i < data.jobs.length; i++) {
+          const item = data.jobs[i];
+          self.data.jobs.push({
+            hash: item.hash,
+            name: item.name,
+            type: item.type,
+          });
+          await config.fs.save(
+            `${basePath}/${item.hash}.js`,
+            item.code,
+          );
+        }
+      }
+      return output;
     },
     streamLogs(onChunk) {
       const date = new Date();

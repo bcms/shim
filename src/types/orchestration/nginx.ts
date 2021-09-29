@@ -1,7 +1,7 @@
-import type { InstanceDomain, Orchestration } from '.';
+import type { InstanceDomain, OrchestrationMain } from '.';
 
 export interface NginxConfig {
-  orch: Orchestration;
+  orch: OrchestrationMain;
 }
 
 export interface NginxDomain extends InstanceDomain {
@@ -9,9 +9,11 @@ export interface NginxDomain extends InstanceDomain {
 }
 
 export interface Nginx {
-  start(): Promise<void>;
-  stop(): Promise<void>;
-  restart(): Promise<void>;
-  run(): Promise<void>;
-  remove(): Promise<void>;
+  updateConfig(): Promise<void>;
+  copyConfigToContainer(): Promise<boolean>
+  start(): Promise<boolean>;
+  stop(): Promise<boolean>;
+  restart(): Promise<boolean>;
+  run(): Promise<boolean>;
+  remove(): Promise<boolean>;
 }

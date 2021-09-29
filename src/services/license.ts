@@ -3,8 +3,9 @@ import type { Module } from '@becomes/purple-cheetah/types';
 import { watch } from 'chokidar';
 import * as path from 'path';
 import { Service } from '.';
+import { ShimConfig } from '../config';
 import type { License } from '../types';
-import { General } from '../util';
+import { General, Http } from '../util';
 
 export function createLicenseService(): Module {
   return {
@@ -14,6 +15,13 @@ export function createLicenseService(): Module {
       const logger = useLogger({ name: 'License service' });
       const watcher = watch(path.join(process.cwd(), 'licenses'));
       const fs = useFS();
+      const http = !ShimConfig.cloud.domain
+        ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
+        : new Http(
+            ShimConfig.cloud.domain,
+            ShimConfig.cloud.port,
+            '/api/v1/shim',
+          );
 
       function add(instId: string, license: string) {
         const licenseCore = General.string.getTextBetween(
@@ -40,7 +48,7 @@ export function createLicenseService(): Module {
           const instId = licenseName.split('.')[0];
           const licenseRaw = (await fs.read(location)).toString();
           try {
-            const res = await Service.cloudConnection.http.send<{
+            const res = await http.send<{
               ok: boolean;
             }>({
               path: `/instance/valid/${instId}`,
@@ -60,7 +68,6 @@ export function createLicenseService(): Module {
           }
         }
       }
-
 
       watcher.on('add', async (location) => {
         const result = await checkLicense(location);
