@@ -124,8 +124,8 @@ export async function createInstance(config: {
             type: item.type,
           });
           await config.fs.save(
-            `${basePath}/${item.hash}.js`,
-            item.code,
+            `${basePath}/${item.name}.js`,
+            Buffer.from(item.code, 'base64').toString(),
           );
         }
       }
@@ -145,8 +145,8 @@ export async function createInstance(config: {
             type: item.type,
           });
           await config.fs.save(
-            `${basePath}/${item.hash}.js`,
-            item.code,
+            `${basePath}/${item.name}.js`,
+            Buffer.from(item.code, 'base64').toString(),
           );
         }
       }
@@ -166,8 +166,8 @@ export async function createInstance(config: {
             type: item.type,
           });
           await config.fs.save(
-            `${basePath}/${item.hash}.js`,
-            item.code,
+            `${basePath}/${item.name}.js`,
+            Buffer.from(item.code, 'base64').toString(),
           );
         }
       }

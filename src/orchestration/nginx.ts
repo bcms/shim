@@ -45,7 +45,7 @@ http {
       proxy_set_header Connection "upgrade";
       proxy_set_header Host $host;
 
-      proxy_pass http://172.17.0.1:1279/_instance-proxyapi/socket/server/;
+      proxy_pass http://172.17.0.1:1279/_instance-proxyapi/api/socket/server;
     }
     location /_instance-proxy {
       proxy_set_header bcmsrip $remote_addr ;

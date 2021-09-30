@@ -7,6 +7,7 @@ import { Service } from '../services';
 import type {
   Instance,
   InstanceDomain,
+  InstanceFJE,
   Nginx,
   Orchestration as OrchestrationType,
   OrchestrationMain,
@@ -30,9 +31,7 @@ export function createInstanceOrchestration(): Module {
           safe: boolean;
         };
       } = {};
-      const fs = useFS({
-        base: process.cwd(),
-      });
+      const fs = useFS();
       let nginx: Nginx;
       const pullInstanceDataQueue: boolean[] = [];
 
@@ -60,14 +59,12 @@ export function createInstanceOrchestration(): Module {
 
         if (
           await fs.exist(
-            path.join(process.cwd(), 'storage', 'logs', logName),
+            `${process.cwd()}/storage/logs/${logName}`,
             true,
           )
         ) {
           shimLog = (
-            await fs.read(
-              path.join(process.cwd(), 'storage', 'logs', logName),
-            )
+            await fs.read(`${process.cwd()}/storage/logs/${logName}`)
           ).toString();
         }
         if (
@@ -173,11 +170,16 @@ export function createInstanceOrchestration(): Module {
           try {
             const result = await Service.cloudConnection.send<{
               domains: InstanceDomain[];
-            }>(instId, '/domains', {});
-            inst.target.data.domains = result.domains;
+              events: InstanceFJE[];
+              functions: InstanceFJE[];
+              job: InstanceFJE[];
+            }>(instId, '/data', {});
             pullInstanceDataQueue[queueIndex] = true;
+            inst.target.update(result);
             if (!firstRun && !pullInstanceDataQueue.find((e) => !e)) {
               await nginx.updateConfig();
+              await self.remove(inst.target.stats.id);
+              await self.start(inst.target.stats.id);
             }
           } catch (error) {
             logger.error('init-domains', error);
@@ -520,7 +522,6 @@ export function createInstanceOrchestration(): Module {
           }
         },
         findInstanceByDomainName(name) {
-          console.log(JSON.stringify(insts, null, '  '));
           for (const instId in insts) {
             const inst = insts[instId];
             for (

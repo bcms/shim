@@ -29,7 +29,7 @@ async function main() {
         ' Please do not forget to remove this flag in production.',
     });
   }
-  updateLogger({ output: 'storage/logs' });
+  updateLogger({ output: `${process.cwd()}/storage/logs` });
   createPurpleCheetah({
     port: process.env.PORT ? parseInt(process.env.PORT) : 1279,
     controllers: [UserController, PluginController, HealthController],
