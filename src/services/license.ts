@@ -12,6 +12,10 @@ export function createLicenseService(): Module {
     name: 'License service',
     initialize({ next }) {
       const licenses: { [instanceId: string]: License } = {};
+      if (ShimConfig.local) {
+        next();
+        return;
+      }
       const logger = useLogger({ name: 'License service' });
       const watcher = watch(path.join(process.cwd(), 'licenses'));
       const fs = useFS();

@@ -21,6 +21,10 @@ export function createInstanceOrchestration(): Module {
   return {
     name: 'Orchestration',
     initialize({ next }) {
+      if (ShimConfig.local) {
+        next();
+        return;
+      }
       const logger = useLogger({ name: 'Orchestration' });
       const docker = createDocker();
       const insts: {
