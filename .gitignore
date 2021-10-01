@@ -42,6 +42,4 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # Local Dev Image
-/local-dev-img/dist
-/local-dev-img/licenses
-/local-dev-img/.env.dev
+/local-dev-img
