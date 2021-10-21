@@ -200,7 +200,7 @@ export function createCloudConnectionService(): Module {
             }
             setTimeout(async () => {
               await Service.cloudConnection.connect();
-            }, 5000);
+            }, 3000);
           }
         },
         isConnected(instanceId) {
