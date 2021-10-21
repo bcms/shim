@@ -35,7 +35,9 @@ export function createInstanceOrchestration(): Module {
           safe: boolean;
         };
       } = {};
-      const fs = useFS();
+      const fs = useFS({
+        base: path.join(process.cwd()),
+      });
       let nginx: Nginx;
       const pullInstanceDataQueue: boolean[] = [];
 
@@ -118,7 +120,7 @@ export function createInstanceOrchestration(): Module {
         );
         inst.safe = true;
         if (await self.remove(instId)) {
-          await self.start(instId);
+          await self.run(instId);
           inst.target.stats.previousStatus = 'down-to-error';
         } else {
           inst.target.setStatus('down-to-error');
@@ -243,6 +245,8 @@ export function createInstanceOrchestration(): Module {
 
         await Service.cloudConnection.connect();
         if (ShimConfig.manage) {
+          nginx = await createNginx({ orch: self });
+          await nginx.run();
           for (const instId in insts) {
             const queueIndex = pullInstanceDataQueue.push(false) - 1;
             await pullInstanceData({
@@ -251,8 +255,6 @@ export function createInstanceOrchestration(): Module {
               queueIndex,
             });
           }
-          nginx = await createNginx({ orch: self });
-          await nginx.run();
           checkInstances().catch((error) => {
             logger.error('checkInstances', error);
           });
