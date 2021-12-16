@@ -1,3 +1,4 @@
+export * from './manager';
 export * from './models';
 export * from './orchestration';
 export * from './services';

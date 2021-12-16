@@ -36,7 +36,7 @@ async function main() {
     middleware: [
       createCorsMiddleware(),
       DefaultInstanceProxy,
-      createBodyParserMiddleware(),
+      createBodyParserMiddleware({limit: 102400000}),
       createRequestLoggerMiddleware(),
       SecurityMiddleware,
     ],
