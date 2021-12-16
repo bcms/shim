@@ -35,7 +35,7 @@
     "url": "https://github.com/becomesco/cms-shim/issues"
   },
   "dependencies": {
-    "@banez/child_process": "^1.0.1",
+    "@banez/child_process": "^1.0.2",
     "@banez/docker": "^1.0.1",
     "@becomes/purple-cheetah": "^3.3.2",
     "@becomes/purple-cheetah-mod-jwt": "^1.1.0",

@@ -13,6 +13,7 @@ import type {
 export interface Container {
   id: string;
   name: string;
+  port: string;
   status: CloudInstanceStatus;
   previousStatus: CloudInstanceStatus;
   info: DockerContainerInfo;
@@ -28,4 +29,10 @@ export interface Container {
   streamLogs(config: {
     onChunk: ChildProcessOnChunk;
   }): ChildProcessExecOutput;
+  start(onChunk?: ChildProcessOnChunk): Promise<void>;
+  stop(onChunk?: ChildProcessOnChunk): Promise<void>;
+  restart(onChunk?: ChildProcessOnChunk): Promise<void>;
+  remove(onChunk?: ChildProcessOnChunk): Promise<void>;
+  build(onChunk?: ChildProcessOnChunk): Promise<void>;
+  run(onChunk?: ChildProcessOnChunk): Promise<void>;
 }

@@ -10,19 +10,24 @@ import type {
 } from '../types';
 import { Http } from '../util';
 import { Docker } from '@banez/docker';
+import { ChildProcess } from '@banez/child_process';
+import type { DockerArgs } from '@banez/docker/types';
 
 export async function createContainer(config: {
   id: string;
+  port: string;
   fs: FS;
   status?: CloudInstanceStatus;
 }): Promise<Container> {
   let secret = '';
+  const baseFSPath = path.join(process.cwd(), 'storage', config.id);
   const logger = useLogger({ name: `Instance ${config.id}` });
   const http = new Http(`bcms-instance-${config.id}`);
 
   const self: Container = {
     id: config.id,
     info: {} as never,
+    port: config.port || '8080',
     name: `bcms-instance-${config.id}`,
     status: config.status || 'unknown',
     previousStatus: 'unknown',
@@ -35,6 +40,38 @@ export async function createContainer(config: {
     setStatus(status) {
       self.previousStatus = self.status as CloudInstanceStatus;
       self.status = status;
+    },
+    async checkHealth() {
+      const place = 'checkHealth';
+      try {
+        const timestamp = '' + Date.now();
+        const nonce = crypto.randomBytes(8).toString('hex');
+        const res = await http.send<{ ok: boolean }>({
+          path: '/api/shim/calls/health',
+          host: {
+            name: self.name,
+            port: self.port,
+          },
+          method: 'POST',
+          headers: {
+            'bcms-ts': timestamp,
+            'bcms-nc': nonce,
+            'bcms-sig': crypto
+              .createHmac('sha256', secret)
+              .update(nonce + timestamp + JSON.stringify({}))
+              .digest('hex'),
+          },
+        });
+        if (res.status === 200 && res.data.ok) {
+          return true;
+        }
+        logger.error(place, res);
+      } catch (error) {
+        if (error.code !== 'ECONNREFUSED') {
+          logger.error(place, error);
+        }
+      }
+      return false;
     },
     async updateInfo() {
       const result = await Docker.container.info(self.name);
@@ -136,11 +173,50 @@ export async function createContainer(config: {
       }
       return output;
     },
-    streamLogs({
-      onChunk
-    }) {
-      return Docker.container.tail()
-    }
+    streamLogs({ onChunk }) {
+      return Docker.container.tail({
+        nameOrId: self.name,
+        lines: 100,
+        onChunk,
+      });
+    },
+    async remove(onChunk) {
+      await Docker.container.remove(self.name, { onChunk });
+    },
+    async start(onChunk) {
+      await Docker.container.start(self.name, { onChunk });
+    },
+    async stop(onChunk) {
+      await Docker.container.stop(self.name, { onChunk });
+    },
+    async restart(onChunk) {
+      await Docker.container.restart(self.name, { onChunk });
+    },
+    async build(onChunk) {
+      await ChildProcess.advancedExec(
+        [`cd ${baseFSPath} &&`, `docker build . -t ${self.name}`],
+        {
+          onChunk,
+        },
+      ).awaiter;
+    },
+    async run(onChunk) {
+      const args: DockerArgs = {
+        '-d': [],
+        '-v': [
+          '/var/run/docker.sock:/var/run/docker.sock',
+          `${baseFSPath}/logs:/app/logs`,
+        ],
+        '--name': self.name,
+        '--hostname': self.name,
+        '--network': 'bcms',
+      };
+      args[self.name] = [];
+      await Docker.container.run({
+        args,
+        onChunk,
+      });
+    },
   };
 
   await self.createSecret();
