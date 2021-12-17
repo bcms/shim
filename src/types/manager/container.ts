@@ -1,6 +1,7 @@
 import type {
   ChildProcessExecOutput,
   ChildProcessOnChunk,
+  ChildProcessOnChunkHelperOutput,
 } from '@banez/child_process/types';
 import type { DockerContainerInfo } from '@banez/docker/types';
 import type {
@@ -28,11 +29,30 @@ export interface Container {
   ): Promise<CloudInstanceUpdateResult>;
   streamLogs(config: {
     onChunk: ChildProcessOnChunk;
+    doNotThrowError?: boolean;
   }): ChildProcessExecOutput;
-  start(onChunk?: ChildProcessOnChunk): Promise<void>;
-  stop(onChunk?: ChildProcessOnChunk): Promise<void>;
-  restart(onChunk?: ChildProcessOnChunk): Promise<void>;
-  remove(onChunk?: ChildProcessOnChunk): Promise<void>;
-  build(onChunk?: ChildProcessOnChunk): Promise<void>;
-  run(onChunk?: ChildProcessOnChunk): Promise<void>;
+  start(options?: {
+    onChunk?: ChildProcessOnChunk;
+    doNotThrowError?: boolean;
+  }): Promise<void | ChildProcessOnChunkHelperOutput>;
+  stop(options?: {
+    onChunk?: ChildProcessOnChunk;
+    doNotThrowError?: boolean;
+  }): Promise<void | ChildProcessOnChunkHelperOutput>;
+  restart(options?: {
+    onChunk?: ChildProcessOnChunk;
+    doNotThrowError?: boolean;
+  }): Promise<void | ChildProcessOnChunkHelperOutput>;
+  remove(options?: {
+    onChunk?: ChildProcessOnChunk;
+    doNotThrowError?: boolean;
+  }): Promise<void | ChildProcessOnChunkHelperOutput>;
+  build(options?: {
+    onChunk?: ChildProcessOnChunk;
+    doNotThrowError?: boolean;
+  }): Promise<void | ChildProcessOnChunkHelperOutput>;
+  run(options?: {
+    onChunk?: ChildProcessOnChunk;
+    doNotThrowError?: boolean;
+  }): Promise<void | ChildProcessOnChunkHelperOutput>;
 }

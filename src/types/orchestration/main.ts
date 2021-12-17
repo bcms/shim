@@ -1,5 +1,4 @@
-import type { InstanceUpdateData } from '.';
-import type { Instance } from './instance';
+import type { Instance, InstanceUpdateData } from './instance';
 
 export interface Orchestration {
   main: OrchestrationMain;

@@ -5,7 +5,7 @@ import {
 } from '@becomes/purple-cheetah';
 import { HTTPStatus } from '@becomes/purple-cheetah/types';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { Orchestration } from './orchestration';
+import { Manager } from './manager';
 
 export const DefaultInstanceProxy = createMiddleware({
   name: 'Default instance proxy',
@@ -24,7 +24,7 @@ export const DefaultInstanceProxy = createMiddleware({
         return path.replace('/_instance-proxy', '');
       },
       router(req) {
-        const inst = Orchestration.main.findInstanceByDomainName(
+        const inst = Manager.m.container.findByDomain(
           (req.headers['x-bcms-domain'] as string) || '',
         );
         if (!inst) {
@@ -33,7 +33,7 @@ export const DefaultInstanceProxy = createMiddleware({
             `Invalid instance domain "${req.headers['x-bcms-domain']}"`,
           );
         }
-        return `http://172.17.0.1:${inst.stats.port}`;
+        return `http://${inst.info.NetworkSettings.IPAddress}:${inst.port}`;
       },
       onError(err, _req, _res) {
         if (err) {

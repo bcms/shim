@@ -36,8 +36,8 @@
   },
   "dependencies": {
     "@banez/child_process": "^1.0.2",
-    "@banez/docker": "^1.0.1",
-    "@becomes/purple-cheetah": "^3.3.2",
+    "@banez/docker": "^1.1.0",
+    "@becomes/purple-cheetah": "^3.4.0",
     "@becomes/purple-cheetah-mod-jwt": "^1.1.0",
     "chokidar": "^3.5.2",
     "express": "^4.17.1",
@@ -55,9 +55,6 @@
     "nodemon": "^2.0.12",
     "prettier": "^2.2.1",
     "ts-node": "^9.1.1",
-    "tsconfig-paths": "^3.10.1",
-    "typedoc": "^0.17.8",
-    "typedoc-neo-theme": "^1.0.10",
     "typescript": "^4.3.5"
   },
   "nodemonConfig": {

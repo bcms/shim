@@ -6,7 +6,7 @@ import {
 import { HTTPStatus } from '@becomes/purple-cheetah/types';
 import type { NextFunction, Request, Response } from 'express';
 import { ShimConfig } from '../config';
-import { Orchestration } from '../orchestration';
+import { Manager } from '../manager';
 
 export const SecurityMiddleware = createMiddleware({
   path: '/shim/instance',
@@ -125,7 +125,7 @@ export const SecurityMiddleware = createMiddleware({
         next(errorHandler.occurred(HTTPStatus.FORBIDDEN, 'Blocked.'));
         return;
       }
-      const instance = Orchestration.main.getInstance(instanceId);
+      const instance = Manager.m.container.findById(instanceId);
       // const instanceSecret = Service.cloudConnection.getSecret(instanceId);
       if (!instance) {
         next(

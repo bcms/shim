@@ -11,8 +11,8 @@ import {
   PluginController,
   UserController,
 } from './controllers';
+import { createManager } from './manager';
 import { SecurityMiddleware } from './middleware';
-import { createInstanceOrchestration } from './orchestration';
 import { DefaultInstanceProxy } from './proxy';
 import {
   createCloudConnectionService,
@@ -36,7 +36,7 @@ async function main() {
     middleware: [
       createCorsMiddleware(),
       DefaultInstanceProxy,
-      createBodyParserMiddleware({limit: 102400000}),
+      createBodyParserMiddleware({ limit: 102400000 }),
       createRequestLoggerMiddleware(),
       SecurityMiddleware,
     ],
@@ -44,8 +44,7 @@ async function main() {
       createSecurityService(),
       createLicenseService(),
       createCloudConnectionService(),
-
-      createInstanceOrchestration(),
+      createManager(),
     ],
   });
 }
