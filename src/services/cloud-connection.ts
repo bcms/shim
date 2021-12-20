@@ -3,14 +3,14 @@ import { useLogger } from '@becomes/purple-cheetah';
 import { ShimConfig } from '../config';
 import type {
   CloudConnection,
-  Instance,
+  Container,
   SecurityObject,
 } from '../types';
 import { General, Http, System } from '../util';
 import { HTTPStatus, Module } from '@becomes/purple-cheetah/types';
 import { getHeapStatistics } from 'v8';
 import { Service } from './main';
-import { Orchestration } from '../orchestration';
+import { Manager } from '../manager';
 
 interface ServerStats {
   cpu: {
@@ -95,7 +95,7 @@ export function createCloudConnectionService(): Module {
     return false;
   }
   async function sendStats(
-    inst: Instance,
+    cont: Container,
     channel: string,
   ): Promise<boolean> {
     try {
@@ -103,12 +103,12 @@ export function createCloudConnectionService(): Module {
       const response = await http.send<SecurityObject>({
         path: `/conn/${channel}`,
         method: 'POST',
-        data: Service.security.enc(inst.stats.id, {
+        data: Service.security.enc(cont.id, {
           ...stats,
-          instStatus: inst.stats.status,
+          instStatus: cont.status,
         }),
         headers: {
-          iid: inst.stats.id,
+          iid: cont.id,
         },
       });
       if (response.status !== 200) {
@@ -121,7 +121,7 @@ export function createCloudConnectionService(): Module {
       }
       const resObj: {
         ok: string;
-      } = Service.security.dec(inst.stats.id, response.data);
+      } = Service.security.dec(cont.id, response.data);
       return !!resObj.ok;
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -142,7 +142,6 @@ export function createCloudConnectionService(): Module {
             for (let i = 0; i < instIds.length; i++) {
               const instId = instIds[i];
 
-              const inst = Orchestration.main.getInstance(instId);
               let connection = connections[instId];
               if (!connection) {
                 connections[instId] = {
@@ -177,22 +176,25 @@ export function createCloudConnectionService(): Module {
                 }
               } else {
                 if (connection.cloud.sendStatsAfter < Date.now()) {
-                  if (
-                    !(await sendStats(
-                      inst,
-                      connections[instId].cloud.channel,
-                    ))
-                  ) {
-                    logger.warn(
-                      'connection',
-                      `Connection failed for "${instId}".`,
-                    );
-                    connections[instId].cloud.connected = false;
-                    connections[instId].cloud.registerAfter =
-                      Date.now() + 10000;
-                  } else {
-                    connections[instId].cloud.sendStatsAfter =
-                      Date.now() + 5000;
+                  const inst = Manager.m.container.findById(instId);
+                  if (inst) {
+                    if (
+                      !(await sendStats(
+                        inst,
+                        connections[instId].cloud.channel,
+                      ))
+                    ) {
+                      logger.warn(
+                        'connection',
+                        `Connection failed for "${instId}".`,
+                      );
+                      connections[instId].cloud.connected = false;
+                      connections[instId].cloud.registerAfter =
+                        Date.now() + 10000;
+                    } else {
+                      connections[instId].cloud.sendStatsAfter =
+                        Date.now() + 5000;
+                    }
                   }
                 }
                 // TODO: check instance state

@@ -33,7 +33,11 @@ export const DefaultInstanceProxy = createMiddleware({
             `Invalid instance domain "${req.headers['x-bcms-domain']}"`,
           );
         }
-        return `http://${inst.info.NetworkSettings.IPAddress}:${inst.port}`;
+        return `http://${
+          inst.info && inst.info.NetworkSettings.Networks.bcms
+            ? inst.info.NetworkSettings.Networks.bcms.IPAddress
+            : '10.20.30.1'
+        }:${inst.port}`;
       },
       onError(err, _req, _res) {
         if (err) {

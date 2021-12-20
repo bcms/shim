@@ -5,6 +5,7 @@ import { ChildProcess } from '@banez/child_process';
 import type { ChildProcessOnChunkHelperOutput } from '@banez/child_process/types';
 import { Docker } from '@banez/docker';
 import type { DockerArgs } from '@banez/docker/types';
+import { ShimConfig } from '../config';
 
 const nConfig = {
   main: `
@@ -203,7 +204,14 @@ export function createNginx({ manager }: NginxConfig): Nginx {
               servers.push(
                 getConfig({
                   domain: domain.name,
-                  ip: container.info.NetworkSettings.IPAddress,
+                  ip:
+                    container.info &&
+                    container.info.NetworkSettings.Networks.bcms &&
+                    container.info.NetworkSettings.Networks.bcms
+                      .IPAddress
+                      ? container.info.NetworkSettings.Networks.bcms
+                          .IPAddress
+                      : '10.20.30.1',
                   type: 'https',
                 }),
               );
@@ -211,7 +219,14 @@ export function createNginx({ manager }: NginxConfig): Nginx {
               servers.push(
                 getConfig({
                   domain: domain.name,
-                  ip: container.info.NetworkSettings.IPAddress,
+                  ip:
+                    container.info &&
+                    container.info.NetworkSettings.Networks.bcms &&
+                    container.info.NetworkSettings.Networks.bcms
+                      .IPAddress
+                      ? container.info.NetworkSettings.Networks.bcms
+                          .IPAddress
+                      : '10.20.30.1',
                   type: 'https',
                 }),
               );
@@ -219,11 +234,17 @@ export function createNginx({ manager }: NginxConfig): Nginx {
           }
         }
       }
-
-      config = nConfig.main.replace(
-        '@instanceServers',
-        servers.join('\n'),
+      const info = await Docker.container.info(
+        ShimConfig.containerName,
       );
+      config = nConfig.main
+        .replace(/@instanceServers/g, servers.join('\n'))
+        .replace(
+          /@bcms-shim-ip/g,
+          info && info.NetworkSettings.Networks.bcms
+            ? info.NetworkSettings.Networks.bcms.IPAddress
+            : '10.20.30.1',
+        );
       await fs.save(`nginx.conf`, config);
     },
     async copyConfigToContainer() {
@@ -310,8 +331,16 @@ export function createNginx({ manager }: NginxConfig): Nginx {
     async remove(options) {
       if (await Docker.container.exists(name)) {
         const info = await Docker.container.info(name);
-        if (info.State.Running) {
-          Docker.container.stop(name);
+        if (info && info.State && info.State.Running) {
+          const exo: ChildProcessOnChunkHelperOutput = {
+            err: '',
+            out: '',
+          };
+          await Docker.container.stop(name, {
+            doNotThrowError: true,
+            onChunk: ChildProcess.onChunkHelper(exo),
+          });
+          logger.info('remove - stop', exo);
         }
         if (!options) {
           const exo: ChildProcessOnChunkHelperOutput = {
@@ -383,13 +412,23 @@ export function createNginx({ manager }: NginxConfig): Nginx {
       ).awaiter;
     },
     async run(options) {
-      if (await Docker.container.exists(name)) {
-        const info = await Docker.container.info(name);
-        if (info.State.Running) {
-          await Docker.container.stop(name);
-        }
-        await Docker.container.remove(name);
+      {
+        const exo: ChildProcessOnChunkHelperOutput = {
+          err: '',
+          out: '',
+        };
+        await self.remove({
+          doNotThrowError: true,
+          onChunk: ChildProcess.onChunkHelper(exo),
+        });
       }
+      // if (await Docker.container.exists(name)) {
+      //   const info = await Docker.container.info(name);
+      //   if (info && info.State && info.State.Running) {
+      //     await Docker.container.stop(name);
+      //   }
+      //   await Docker.container.remove(name);
+      // }
       const args: DockerArgs = {
         '-d': [],
         '-p': ['80:80', '443:443', '3000:3000'],
@@ -398,6 +437,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
           'proxy',
           'ssl',
         )}:/etc/nginx/ssl`,
+        '--network': 'bcms',
         '--name': name,
         '--hostname': name,
       };
@@ -414,7 +454,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
         });
         if (exo.err) {
           logger.error('run', {
-            msg: 'Failed to run bcms-proxy',
+            msg: `Failed to run ${name}`,
           });
         }
         return exo;

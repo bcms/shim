@@ -1,6 +1,7 @@
 export interface ShimConfig {
   local: boolean;
   manage: boolean;
+  containerName: string;
   cloud: {
     domain?: string;
     port: string;

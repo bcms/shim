@@ -47,7 +47,7 @@ export async function createContainer(config: {
 
   const self: Container = {
     id: config.id,
-    info: {} as never,
+    info: undefined,
     port: config.port || '8080',
     name: `bcms-instance-${config.id}`,
     status: config.status || 'unknown',
@@ -87,7 +87,8 @@ export async function createContainer(config: {
           return true;
         }
         logger.error(place, res);
-      } catch (error) {
+      } catch (err) {
+        const error = err as { code: string };
         if (error.code !== 'ECONNREFUSED') {
           logger.error(place, error);
         }
@@ -145,8 +146,8 @@ export async function createContainer(config: {
             type: item.type,
           });
           await fs.save(
-            `${item.name}.js`,
-            Buffer.from(item.code, 'base64').toString(),
+            [basePath, `${item.name}.js`],
+            Buffer.from(item.code as string, 'base64').toString(),
           );
         }
       }
@@ -166,8 +167,8 @@ export async function createContainer(config: {
             type: item.type,
           });
           await fs.save(
-            `${item.name}.js`,
-            Buffer.from(item.code, 'base64').toString(),
+            [basePath, `${item.name}.js`],
+            Buffer.from(item.code as string, 'base64').toString(),
           );
         }
       }
@@ -187,8 +188,8 @@ export async function createContainer(config: {
             type: item.type,
           });
           await fs.save(
-            `${item.name}.js`,
-            Buffer.from(item.code, 'base64').toString(),
+            [basePath, `${item.name}.js`],
+            Buffer.from(item.code as string, 'base64').toString(),
           );
         }
       }
@@ -200,32 +201,6 @@ export async function createContainer(config: {
         lines: 100,
         onChunk,
       });
-    },
-    async remove(options) {
-      if (await Docker.container.exists(self.name)) {
-        await self.updateInfo();
-        if (self.info.State.Running) {
-          await Docker.container.stop(self.name);
-        }
-        if (!options) {
-          const exo: ChildProcessOnChunkHelperOutput = {
-            err: '',
-            out: '',
-          };
-          await Docker.container.remove(self.name, {
-            doNotThrowError: true,
-            onChunk: ChildProcess.onChunkHelper(exo),
-          });
-          if (exo.err) {
-            logger.error('remove', {
-              msg: 'Failed to remove bcms-proxy',
-              exo,
-            });
-          }
-          return exo;
-        }
-        await Docker.container.remove(self.name, options);
-      }
     },
     async start(options) {
       if (!options) {
@@ -267,6 +242,42 @@ export async function createContainer(config: {
       }
       await Docker.container.stop(self.name, options);
     },
+    async remove(options) {
+      if (await Docker.container.exists(self.name)) {
+        await self.updateInfo();
+        if (self.info && self.info.State && self.info.State.Running) {
+          const exo: ChildProcessOnChunkHelperOutput = {
+            err: '',
+            out: '',
+          };
+          await Docker.container.stop(self.name, {
+            doNotThrowError: true,
+            onChunk: ChildProcess.onChunkHelper(exo),
+          });
+          if (exo.err) {
+            logger.info('remove - stop', exo);
+          }
+        }
+        if (!options) {
+          const exo: ChildProcessOnChunkHelperOutput = {
+            err: '',
+            out: '',
+          };
+          await Docker.container.remove(self.name, {
+            doNotThrowError: true,
+            onChunk: ChildProcess.onChunkHelper(exo),
+          });
+          if (exo.err) {
+            logger.error('remove', {
+              msg: 'Failed to remove bcms-proxy',
+              exo,
+            });
+          }
+          return exo;
+        }
+        await Docker.container.remove(self.name, options);
+      }
+    },
     async restart(options) {
       if (!options) {
         const exo: ChildProcessOnChunkHelperOutput = {
@@ -297,8 +308,16 @@ export async function createContainer(config: {
           `FROM becomes/cms-backend${
             config.version ? ':' + config.version : ''
           }`,
-          'WORKDIR app',
-          'COPY . /app',
+          '',
+          'WORKDIR /app',
+          '',
+          'COPY events /app/events',
+          'COPY functions /app/functions',
+          'COPY jobs /app/jobs',
+          'COPY plugins /app/plugins',
+          'COPY bcms.config.js /app/bcms.config.js',
+          'COPY shim.json /app/shim.json',
+          '',
           'ENTRYPOINT ["npm", "start"]',
         ].join('\n'),
       );
@@ -335,7 +354,7 @@ export async function createContainer(config: {
                               port:
                                 typeof dbInfo.port === 'number'
                                   ? dbInfo.port
-                                  : parseInt(dbInfo.port),
+                                  : parseInt(dbInfo.port as string),
                               user: dbInfo.user,
                             }
                           : undefined,
@@ -366,7 +385,7 @@ export async function createContainer(config: {
         ).awaiter;
         if (exo.err) {
           logger.error('build', {
-            msg: 'Failed to build bcms-proxy',
+            msg: 'Failed to build.',
             exo,
           });
         }
@@ -378,12 +397,18 @@ export async function createContainer(config: {
       ).awaiter;
     },
     async run(options) {
-      await self.updateInfo();
-      if (await Docker.container.exists(self.name)) {
-        if (self.info.State.Running) {
-          await Docker.container.stop(self.name);
+      {
+        const exo: ChildProcessOnChunkHelperOutput = {
+          err: '',
+          out: '',
+        };
+        await self.remove({
+          doNotThrowError: true,
+          onChunk: ChildProcess.onChunkHelper(exo),
+        });
+        if (exo.err) {
+          logger.info('run - remove', exo);
         }
-        await Docker.container.remove(self.name);
       }
       const args: DockerArgs = {
         '-d': [],

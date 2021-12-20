@@ -17,7 +17,7 @@ export interface Container {
   port: string;
   status: CloudInstanceStatus;
   previousStatus: CloudInstanceStatus;
-  info: DockerContainerInfo;
+  info?: DockerContainerInfo;
   data: CloudInstanceData;
   updateInfo(): Promise<DockerContainerInfo>;
   createSecret(): Promise<string>;

@@ -104,12 +104,19 @@ async function init() {
           onChunk: ChildProcess.onChunkHelper(exo),
           doNotThrowError: true,
         });
+        const c = containers[id];
         if (exo.err) {
+          c.err = exo.err;
+          c.target.setStatus('down-to-error');
           logger.error('remove', {
             msg: `Failed to remove ${cont.name}`,
             exo,
           });
           return false;
+        } else {
+          c.target.setStatus('unknown');
+          c.err = '';
+          c.alive = false;
         }
         return true;
       },
@@ -126,12 +133,18 @@ async function init() {
           onChunk: ChildProcess.onChunkHelper(exo),
           doNotThrowError: true,
         });
+        const c = containers[id];
         if (exo.err) {
+          c.err = exo.err;
+          c.target.setStatus('down-to-error');
           logger.error('restart', {
             msg: `Failed to restart ${cont.name}`,
             exo,
           });
           return false;
+        } else {
+          c.err = '';
+          c.target.setStatus('active');
         }
         return true;
       },
@@ -148,12 +161,19 @@ async function init() {
           onChunk: ChildProcess.onChunkHelper(exo),
           doNotThrowError: true,
         });
+        const c = containers[id];
         if (exo.err) {
+          c.err = exo.err;
+          c.target.setStatus('down-to-error');
           logger.error('start', {
             msg: `Failed to start ${cont.name}`,
             exo,
           });
           return false;
+        } else {
+          c.err = '';
+          c.target.setStatus('active');
+          logger.info('start', `Container "${cont.name}" started.`);
         }
         return true;
       },
@@ -170,12 +190,19 @@ async function init() {
           onChunk: ChildProcess.onChunkHelper(exo),
           doNotThrowError: true,
         });
+        const c = containers[id];
         if (exo.err) {
+          c.err = exo.err;
+          c.target.setStatus('down-to-error');
           logger.error('stop', {
             msg: `Failed to stop ${cont.name}`,
             exo,
           });
           return false;
+        } else {
+          c.err = '';
+          c.target.setStatus('down');
+          logger.info('stop', `Container "${cont.name}" stopped.`);
         }
         return true;
       },
@@ -192,12 +219,19 @@ async function init() {
           onChunk: ChildProcess.onChunkHelper(exo),
           doNotThrowError: true,
         });
+        const c = containers[id];
         if (exo.err) {
+          c.err = exo.err;
+          c.target.setStatus('down-to-error');
           logger.error('run', {
             msg: `Failed to run ${cont.name}`,
             exo,
           });
           return false;
+        } else {
+          c.err = '';
+          c.target.setStatus('active');
+          logger.info('run', `Container "${cont.name}" started.`);
         }
         return true;
       },
@@ -206,8 +240,7 @@ async function init() {
 
   async function pullInstanceData(
     cont: Container,
-    resolve: () => void,
-    reject: (err: Error) => void,
+    resolve: (value: boolean) => void,
     run: number,
   ): Promise<void> {
     if (Service.cloudConnection.isConnected(cont.id)) {
@@ -219,23 +252,26 @@ async function init() {
           job: CloudInstanceFJE[];
         }>(cont.id, '/data', {});
         await containers[cont.id].target.update(result);
+        await containers[cont.id].target.build();
         await containers[cont.id].target.run();
-        resolve();
+        resolve(true);
       } catch (error) {
         if (run > 20) {
-          reject(Error(`Cannot pull data for ${cont.id}`));
+          resolve(false);
+          // reject(Error(`Cannot pull data for ${cont.id}`));
         }
         logger.error('pullInstanceData', error);
         setTimeout(() => {
-          pullInstanceData(cont, resolve, reject, run + 1);
+          pullInstanceData(cont, resolve, run + 1);
         }, 1000);
       }
     } else {
       if (run > 20) {
-        reject(Error(`Cannot connect to cloud for ${cont.id}`));
+        resolve(false);
+        // reject(Error(`Cannot connect to cloud for ${cont.id}`));
       }
       setTimeout(() => {
-        pullInstanceData(cont, resolve, reject, run + 1);
+        pullInstanceData(cont, resolve, run + 1);
       }, 100);
     }
   }
@@ -257,6 +293,7 @@ async function init() {
             await Manager.m.container.restart(contId);
           }
         } else if (cont.target.status === 'unknown') {
+          await Manager.m.container.build(contId);
           await Manager.m.container.run(contId);
         } else if (cont.target.status === 'down') {
           await Manager.m.container.start(contId);
@@ -340,7 +377,7 @@ async function init() {
           target: cont,
         };
         await cont.updateInfo();
-        if (cont.info.State.Running) {
+        if (cont.info && cont.info.State && cont.info.State.Running) {
           const exo: ChildProcessOnChunkHelperOutput = {
             err: '',
             out: '',
@@ -379,11 +416,27 @@ async function init() {
       nginx = createNginx({ manager: Manager.m });
       await nginx.updateConfig();
       await nginx.run();
-      for (const contId in containers) {
-        const cont = containers[contId];
-        await new Promise<void>((resolve, reject) => {
-          pullInstanceData(cont.target, resolve, reject, 0);
-        });
+      const ids = Object.keys(containers);
+      let pointer = 0;
+      let loop = true;
+      while (loop) {
+        const cont = containers[ids[pointer]];
+        if (
+          await new Promise<boolean>((resolve) => {
+            pullInstanceData(cont.target, resolve, 0);
+          })
+        ) {
+          pointer++;
+          if (pointer === ids.length) {
+            loop = false;
+          }
+        } else {
+          await new Promise<void>((resolve) => {
+            setTimeout(() => {
+              resolve();
+            }, 1000);
+          });
+        }
       }
       await nginx.updateConfig();
       await nginx.copyConfigToContainer();

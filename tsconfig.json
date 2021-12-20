@@ -11,7 +11,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "incremental": true,
-    "importsNotUsedAsValues": "error"
+    "importsNotUsedAsValues": "error",
+    "strict": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist",  "public"]

@@ -7,6 +7,7 @@ import {
 } from '@becomes/purple-cheetah';
 import { ShimConfig } from './config';
 import {
+  CloudController,
   HealthController,
   PluginController,
   UserController,
@@ -32,7 +33,12 @@ async function main() {
   updateLogger({ output: `${process.cwd()}/storage/logs` });
   createPurpleCheetah({
     port: process.env.PORT ? parseInt(process.env.PORT) : 1279,
-    controllers: [UserController, PluginController, HealthController],
+    controllers: [
+      UserController,
+      PluginController,
+      HealthController,
+      CloudController,
+    ],
     middleware: [
       createCorsMiddleware(),
       DefaultInstanceProxy,

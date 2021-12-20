@@ -9,6 +9,7 @@
 /.idea
 /storage
 /proxy/ssl
+/proxy/nginx.conf
 
 # Logs
 logs

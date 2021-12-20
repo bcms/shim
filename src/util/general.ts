@@ -58,7 +58,7 @@ export const General = {
       for (let i = 0, len = cpus.length; i < len; i++) {
         const cpu = cpus[i];
         for (const type in cpu.times) {
-          totalTick += cpu.times[type];
+          totalTick += cpu.times[type as never];
         }
         totalIdle += cpu.times.idle;
       }

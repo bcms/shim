@@ -60,6 +60,8 @@ export const SecurityMiddleware = createMiddleware({
       let nonce = '';
       let timestamp = 0;
       let sig = '';
+      console.log(req.headers);
+      console.log(req.body);
       if (typeof req.headers['bcms-iid'] !== 'string') {
         next(
           errorHandler.occurred(

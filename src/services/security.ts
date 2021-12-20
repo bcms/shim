@@ -84,7 +84,8 @@ export function createSecurityService(): Module {
           let msg: SecurityObjectMessage<T>;
           try {
             msg = JSON.parse(decMsg);
-          } catch (e) {
+          } catch (err) {
+            const e = err as Error;
             throw Error(`Message is not an object: ${e.message}`);
           }
           if (!msg.nc) {
