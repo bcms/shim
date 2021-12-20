@@ -10,6 +10,8 @@
 /storage
 /proxy/ssl
 /proxy/nginx.conf
+/lib
+/tsconfig.tsbuildinfo
 
 # Logs
 logs
