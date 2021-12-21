@@ -10,7 +10,7 @@
     "target": "ESNext",
     "outDir": "./dist",
     "rootDir": "./src",
-    "incremental": true,
+    "incremental": false,
     "importsNotUsedAsValues": "error",
     "strict": true
   },

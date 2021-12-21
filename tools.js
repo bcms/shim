@@ -133,7 +133,9 @@ async function bundle() {
         );
         data.devDependencies = undefined;
         data.nodemonConfig = undefined;
-        data.scripts = undefined;
+        data.scripts = {
+          start: 'node main.js',
+        };
         await util.promisify(fs.writeFile)(
           path.join(__dirname, 'dist', 'package.json'),
           JSON.stringify(data, null, '  '),
@@ -271,12 +273,13 @@ async function createImage() {
     {
       title: 'Create docker image',
       task: async () => {
-        await spawn('docker', [
-          'build',
-          '.',
-          '-t',
-          'becomes/cms-shim',
-        ]);
+        await spawn(
+          'docker',
+          ['build', '.', '-t', 'becomes/cms-shim'],
+          {
+            cwd: path.join(process.cwd(), 'lib'),
+          },
+        );
       },
     },
     {
@@ -312,7 +315,12 @@ async function createDevImage() {
         await fse.mkdirp(
           path.join(__dirname, 'local-dev-dist', 'license'),
         );
-        const files = ['tsconfig.json', '.eslintrc', '.eslintignore', '.env.dev'];
+        const files = [
+          'tsconfig.json',
+          '.eslintrc',
+          '.eslintignore',
+          '.env.dev',
+        ];
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           await fse.copy(

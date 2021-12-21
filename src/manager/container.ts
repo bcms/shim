@@ -96,9 +96,13 @@ export async function createContainer(config: {
       return false;
     },
     async updateInfo() {
-      const result = await Docker.container.info(self.name);
-      self.info = result;
-      return result;
+      try {
+        const result = await Docker.container.info(self.name);
+        self.info = result;
+        return result;
+      } catch (error) {
+        return self.info;
+      }
     },
     async createSecret() {
       secret = ShimConfig.manage

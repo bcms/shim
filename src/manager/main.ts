@@ -362,6 +362,7 @@ async function init() {
 
   // Initialize container manager - Starting processes
   {
+    await Docker.image.pull('becomes/cms-backend');
     const contList = await Docker.container.list();
     for (let i = 0; i < contList.length; i++) {
       const contItem = contList[i];
@@ -415,6 +416,7 @@ async function init() {
     if (ShimConfig.manage) {
       nginx = createNginx({ manager: Manager.m });
       await nginx.updateConfig();
+      await nginx.build();
       await nginx.run();
       const ids = Object.keys(containers);
       let pointer = 0;
@@ -468,7 +470,23 @@ export function createManager(): Module {
     initialize({ next }) {
       init()
         .then(() => next())
-        .catch((err) => next(err));
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error(err);
+
+          next(
+            Error(
+              JSON.stringify(
+                {
+                  message: err.message,
+                  stack: err.stack,
+                },
+                null,
+                '  ',
+              ),
+            ),
+          );
+        });
     },
   };
 }

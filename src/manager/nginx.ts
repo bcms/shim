@@ -4,7 +4,10 @@ import type { Nginx, NginxConfig } from '../types';
 import { ChildProcess } from '@banez/child_process';
 import type { ChildProcessOnChunkHelperOutput } from '@banez/child_process/types';
 import { Docker } from '@banez/docker';
-import type { DockerArgs } from '@banez/docker/types';
+import type {
+  DockerArgs,
+  DockerContainerInfo,
+} from '@banez/docker/types';
 import { ShimConfig } from '../config';
 
 const nConfig = {
@@ -234,9 +237,12 @@ export function createNginx({ manager }: NginxConfig): Nginx {
           }
         }
       }
-      const info = await Docker.container.info(
-        ShimConfig.containerName,
-      );
+      let info: DockerContainerInfo | undefined;
+      try {
+        info = await Docker.container.info(ShimConfig.containerName);
+      } catch (error) {
+        info = undefined;
+      }
       config = nConfig.main
         .replace(/@instanceServers/g, servers.join('\n'))
         .replace(
@@ -261,6 +267,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
         ],
         {
           onChunk: ChildProcess.onChunkHelper(exo),
+          doNotThrowError: true,
         },
       ).awaiter;
       if (exo.err) {
@@ -330,7 +337,12 @@ export function createNginx({ manager }: NginxConfig): Nginx {
     },
     async remove(options) {
       if (await Docker.container.exists(name)) {
-        const info = await Docker.container.info(name);
+        let info: DockerContainerInfo | undefined;
+        try {
+          info = await Docker.container.info(name);
+        } catch (error) {
+          info = undefined;
+        }
         if (info && info.State && info.State.Running) {
           const exo: ChildProcessOnChunkHelperOutput = {
             err: '',
@@ -422,13 +434,6 @@ export function createNginx({ manager }: NginxConfig): Nginx {
           onChunk: ChildProcess.onChunkHelper(exo),
         });
       }
-      // if (await Docker.container.exists(name)) {
-      //   const info = await Docker.container.info(name);
-      //   if (info && info.State && info.State.Running) {
-      //     await Docker.container.stop(name);
-      //   }
-      //   await Docker.container.remove(name);
-      // }
       const args: DockerArgs = {
         '-d': [],
         '-p': ['80:80', '443:443', '3000:3000'],
@@ -455,6 +460,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
         if (exo.err) {
           logger.error('run', {
             msg: `Failed to run ${name}`,
+            exo,
           });
         }
         return exo;
