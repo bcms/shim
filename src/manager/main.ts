@@ -253,7 +253,9 @@ async function init() {
         }>(cont.id, '/data', {});
         await containers[cont.id].target.update(result);
         await containers[cont.id].target.build();
-        await containers[cont.id].target.run();
+        await containers[cont.id].target.run({
+          waitFor: 1000,
+        });
         resolve(true);
       } catch (error) {
         if (run > 20) {
@@ -387,10 +389,12 @@ async function init() {
             onChunk: ChildProcess.onChunkHelper(exo),
             doNotThrowError: true,
           });
-          logger.warn('init', {
-            msg: `Failed to remove ${cont.name}`,
-            exo,
-          });
+          if (exo.err) {
+            logger.warn('init', {
+              msg: `Failed to remove ${cont.name}`,
+              exo,
+            });
+          }
         }
         const license = Service.license.get(contId);
         if (!license) {

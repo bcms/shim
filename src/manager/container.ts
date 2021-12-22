@@ -426,31 +426,39 @@ export async function createContainer(config: {
         '--network': 'bcms',
       };
       args[self.name] = [];
-      if (!options) {
-        const exo: ChildProcessOnChunkHelperOutput = {
-          err: '',
-          out: '',
-        };
-        await Docker.container.run({
-          args,
-          doNotThrowError: true,
-          onChunk: ChildProcess.onChunkHelper(exo),
-        });
-        if (exo.err) {
-          logger.error('run', {
-            msg: 'Failed to run bcms-proxy',
-            exo,
-          });
-        }
-        return exo;
-      }
+      const exo: ChildProcessOnChunkHelperOutput = {
+        err: '',
+        out: '',
+      };
       await Docker.container.run({
         args,
-        onChunk: options ? options.onChunk : undefined,
-        doNotThrowError: options
-          ? options.doNotThrowError
-          : undefined,
+        doNotThrowError: options && options.doNotThrowError,
+        onChunk:
+          options && options.onChunk
+            ? options.onChunk
+            : ChildProcess.onChunkHelper(exo),
       });
+      if (exo.err) {
+        logger.error('run', {
+          msg: 'Failed to run bcms-proxy',
+          exo,
+        });
+      }
+      // await Docker.container.run({
+      //   args,
+      //   onChunk: options ? options.onChunk : ChildProcess.onChunkHelper(exo),
+      //   doNotThrowError: options
+      //     ? options.doNotThrowError
+      //     : undefined,
+      // });
+      if (options && options.waitFor) {
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, options.waitFor);
+        });
+      }
+      return exo;
     },
   };
 

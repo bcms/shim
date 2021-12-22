@@ -48,17 +48,11 @@ const nConfig = {
 
       client_max_body_size 105M;
 
-      location /_instance-proxy/api/socket/server {
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+      @rootProxies
 
-        proxy_pass http://@bcms-shim-ip:1279/_instance-proxyapi/api/socket/server;
-      }
-      location /_instance-proxy {
-        proxy_set_header bcmsrip $remote_addr ;
-        proxy_pass http://@bcms-shim-ip:1279/_instance-proxy;
+      location / {
+        return 400 "Invalid arguments or invalid domain.";
+        add_header Content-Type text/plain always;
       }
     }
 
@@ -183,11 +177,10 @@ export function createNginx({ manager }: NginxConfig): Nginx {
         await fs.deleteDir('proxy/ssl');
       }
       const containers = manager.container.findAll();
+      let rootProxies = '';
       for (let i = 0; i < containers.length; i++) {
         const container = containers[i];
-        if (!container.info) {
-          await container.updateInfo();
-        }
+        await container.updateInfo();
         for (let j = 0; j < container.data.domains.length; j++) {
           const domain = container.data.domains[j];
           if (!domain.name.endsWith('yourbcms.com')) {
@@ -234,6 +227,47 @@ export function createNginx({ manager }: NginxConfig): Nginx {
                 }),
               );
             }
+          } else {
+            const domainHash = Buffer.from(domain.name).toString(
+              'hex',
+            );
+            if (!container.info || !container.info?.NetworkSettings) {
+              logger.warn('', container.info);
+            }
+            const ip =
+              container.info &&
+              container.info.NetworkSettings.Networks.bcms &&
+              container.info.NetworkSettings.Networks.bcms.IPAddress
+                ? container.info.NetworkSettings.Networks.bcms
+                    .IPAddress
+                : '10.20.30.1';
+            rootProxies += `
+            # ${container.name}
+            location /${domainHash}/api/socket/server {
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+        
+              proxy_pass http://${ip}:8080/api/socket/server/;
+            }
+            location /${domainHash}/api {
+              proxy_set_header bcmsrip $remote_addr ;
+              proxy_pass http://${ip}:8080/api;
+            }
+            location /${domainHash}/sockjs-node {
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+        
+              proxy_pass http://${ip}:8080/sockjs-node;
+            }
+            location /${domainHash}/ {
+              proxy_set_header bcmsrip $remote_addr ;
+              proxy_pass http://${ip}:8080/;
+            }
+            `;
           }
         }
       }
@@ -244,6 +278,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
         info = undefined;
       }
       config = nConfig.main
+        .replace(/@rootProxies/g, rootProxies)
         .replace(/@instanceServers/g, servers.join('\n'))
         .replace(
           /@bcms-shim-ip/g,

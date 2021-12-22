@@ -54,5 +54,6 @@ export interface Container {
   run(options?: {
     onChunk?: ChildProcessOnChunk;
     doNotThrowError?: boolean;
+    waitFor?: number;
   }): Promise<void | ChildProcessOnChunkHelperOutput>;
 }
