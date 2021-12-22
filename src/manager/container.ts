@@ -350,16 +350,17 @@ export async function createContainer(config: {
                             }
                           : undefined,
                       selfHosted:
-                        dbInfo.type === 'mongoSelfHosted'
+                        dbInfo.type === 'mongoSelfHosted' ||
+                        dbInfo.type === 'auto'
                           ? {
                               host: dbInfo.host,
-                              name: dbInfo.name,
-                              password: dbInfo.pass,
                               port:
                                 typeof dbInfo.port === 'number'
                                   ? dbInfo.port
                                   : parseInt(dbInfo.port as string),
                               user: dbInfo.user,
+                              name: dbInfo.name,
+                              password: dbInfo.pass,
                             }
                           : undefined,
                     }
