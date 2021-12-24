@@ -39,6 +39,7 @@
     "@banez/docker": "^1.1.0",
     "@becomes/purple-cheetah": "^3.5.0",
     "@becomes/purple-cheetah-mod-jwt": "^1.1.0",
+    "@becomes/purple-cheetah-mod-socket": "^1.1.0",
     "chokidar": "^3.5.2",
     "express": "^4.17.1",
     "http-proxy-middleware": "^2.0.1",

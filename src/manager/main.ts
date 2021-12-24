@@ -380,7 +380,12 @@ async function init() {
           target: cont,
         };
         await cont.updateInfo();
-        if (cont.info && cont.info.State && cont.info.State.Running) {
+        if (
+          ShimConfig.manage &&
+          cont.info &&
+          cont.info.State &&
+          cont.info.State.Running
+        ) {
           const exo: ChildProcessOnChunkHelperOutput = {
             err: '',
             out: '',

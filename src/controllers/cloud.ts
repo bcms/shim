@@ -8,11 +8,8 @@ import {
 } from '@becomes/purple-cheetah/types';
 import { Manager } from '../manager';
 import { Service } from '../services';
-import type {
-  CloudInstanceData,
-  CloudInstanceDomain,
-  CloudInstanceFJE,
-} from '../types';
+import type { CloudInstanceDomain, CloudInstanceFJE } from '../types';
+import { CloudSocket } from '../util';
 
 interface Setup {
   security<Payload>(): ControllerMethodPreRequestHandler<{
@@ -79,6 +76,21 @@ export const CloudController = createController<Setup>({
           }
           return {
             ok: true,
+          };
+        },
+      }),
+      getLogs: createControllerMethod<
+        void,
+        {
+          ok: boolean;
+        }
+      >({
+        path: '/logs',
+        type: 'get',
+        async handler() {
+          CloudSocket.open('6169756ef956f26df700c2d7');
+          return {
+            ok: false,
           };
         },
       }),
