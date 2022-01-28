@@ -1,22 +1,19 @@
-import {
-  createController,
-  createControllerMethod,
-} from '@becomes/purple-cheetah';
-import { ShimConfig } from '../config';
-import { Service } from '../services';
-import type { CloudUser } from '../types';
-import { Const } from '../util';
+import { createController, createControllerMethod } from "@becomes/purple-cheetah";
+import { ShimConfig } from "../config";
+import { Service } from "../services";
+import type { CloudUser } from "../types";
+import { Const } from "../util";
 
-export const UserController = createController({
-  path: '/shim/instance/user',
-  name: 'User controller',
+export const InstanceController = createController({
+  name: 'Instance controller',
+  path: '/shim/instance',
   methods() {
     return {
-      verifyWithOtp: createControllerMethod<
+      userVerifyWithOtp: createControllerMethod<
         unknown,
         { ok: boolean; user?: CloudUser }
       >({
-        path: '/verify/otp',
+        path: '/user/verify/otp',
         type: 'post',
         async handler({ errorHandler, request }) {
           const instanceId = request.headers['bcms-iid'] as string;
@@ -36,12 +33,11 @@ export const UserController = createController({
           );
         },
       }),
-
-      getAll: createControllerMethod<
+      userGetAll: createControllerMethod<
         unknown,
         { user: CloudUser[] }
       >({
-        path: '/all',
+        path: '/user/all',
         type: 'post',
         async handler({ errorHandler, request }) {
           const instanceId = request.headers['bcms-iid'] as string;
@@ -58,6 +54,30 @@ export const UserController = createController({
           );
         },
       }),
-    };
-  },
-});
+
+      
+      pluginVerify: createControllerMethod<unknown, { ok: boolean }>({
+        path: '/plugin/verify/:name',
+        type: 'post',
+        async handler() {
+          if (ShimConfig.local) {
+            return {
+              ok: true,
+            };
+          }
+          return { ok: false };
+        },
+      }),
+
+      healthCheck: createControllerMethod<unknown, { ok: boolean }>({
+        path: '/health',
+        type: 'post',
+        async handler() {
+          return {
+            ok: true,
+          };
+        },
+      }),
+    }
+  }
+})

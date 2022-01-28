@@ -4,6 +4,7 @@ import type {
   ChildProcessOnChunkHelperOutput,
 } from '@banez/child_process/types';
 import type { DockerContainerInfo } from '@banez/docker/types';
+import type { HttpClientResponseError } from '@becomes/purple-cheetah/types';
 import type {
   CloudInstanceStatus,
   CloudInstanceUpdateResult,
@@ -56,4 +57,8 @@ export interface Container {
     doNotThrowError?: boolean;
     waitFor?: number;
   }): Promise<void | ChildProcessOnChunkHelperOutput>;
+  sendRequest<Result, Payload = unknown, Err = unknown>(data: {
+    path: string;
+    payload: Payload;
+  }): Promise<Result | HttpClientResponseError<Err>>;
 }

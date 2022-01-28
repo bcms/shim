@@ -1,6 +1,10 @@
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { useFS, useLogger } from '@becomes/purple-cheetah';
+import {
+  createHttpClient,
+  useFS,
+  useLogger,
+} from '@becomes/purple-cheetah';
 import { ShimConfig } from '../config';
 import type {
   CloudInstanceConfig,
@@ -8,11 +12,11 @@ import type {
   CloudInstanceUpdateResult,
   Container,
 } from '../types';
-import { Http } from '../util';
 import { Docker } from '@banez/docker';
 import { ChildProcess } from '@banez/child_process';
 import type { DockerArgs } from '@banez/docker/types';
 import type { ChildProcessOnChunkHelperOutput } from '@banez/child_process/types';
+import { HttpClientResponseError } from '@becomes/purple-cheetah/types';
 
 export async function createContainer(config: {
   id: string;
@@ -23,7 +27,14 @@ export async function createContainer(config: {
   let secret = '';
   const baseFSPath = path.join(process.cwd(), 'storage', config.id);
   const logger = useLogger({ name: `Instance ${config.id}` });
-  const http = new Http(`bcms-instance-${config.id}`);
+  const http = createHttpClient({
+    name: `${config.id} http client`,
+    host: {
+      name: `bcms-instance-${config.id}`,
+      port: config.port || '8080',
+    },
+    basePath: '/api/shim',
+  });
   const fs = useFS({
     base: baseFSPath,
   });
@@ -62,31 +73,40 @@ export async function createContainer(config: {
       self.previousStatus = self.status as CloudInstanceStatus;
       self.status = status;
     },
+    async sendRequest(data) {
+      const timestamp = '' + Date.now();
+      const nonce = crypto.randomBytes(8).toString('hex');
+      const res = await http.send({
+        method: 'post',
+        path: data.path,
+        headers: {
+          'bcms-ts': timestamp,
+          'bcms-nc': nonce,
+          'bcms-sig': crypto
+            .createHmac('sha256', secret)
+            .update(nonce + timestamp + JSON.stringify({}))
+            .digest('hex'),
+        },
+        data: data.payload,
+      });
+      if (res instanceof HttpClientResponseError) {
+        return res;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return res.data as any;
+    },
     async checkHealth() {
       const place = 'checkHealth';
       try {
-        const timestamp = '' + Date.now();
-        const nonce = crypto.randomBytes(8).toString('hex');
-        const res = await http.send<{ ok: boolean }>({
-          path: '/api/shim/calls/health',
-          host: {
-            name: self.name,
-            port: self.port,
-          },
-          method: 'POST',
-          headers: {
-            'bcms-ts': timestamp,
-            'bcms-nc': nonce,
-            'bcms-sig': crypto
-              .createHmac('sha256', secret)
-              .update(nonce + timestamp + JSON.stringify({}))
-              .digest('hex'),
-          },
+        const res = await self.sendRequest<{ ok: boolean }>({
+          path: '/calls/health',
+          payload: {},
         });
-        if (res.status === 200 && res.data.ok) {
-          return true;
+        if (res instanceof HttpClientResponseError) {
+          logger.error(place, res);
+        } else {
+          return res.ok
         }
-        logger.error(place, res);
       } catch (err) {
         const error = err as { code: string };
         if (error.code !== 'ECONNREFUSED') {

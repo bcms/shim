@@ -9,9 +9,7 @@ import { createSocket } from '@becomes/purple-cheetah-mod-socket';
 import { ShimConfig } from './config';
 import {
   CloudController,
-  HealthController,
-  PluginController,
-  UserController,
+  InstanceController,
 } from './controllers';
 import { createManager } from './manager';
 import { SecurityMiddleware } from './middleware';
@@ -38,9 +36,7 @@ async function main() {
   createPurpleCheetah({
     port: process.env.PORT ? parseInt(process.env.PORT) : 1279,
     controllers: [
-      UserController,
-      PluginController,
-      HealthController,
+      InstanceController,
       CloudController,
     ],
     middleware: [

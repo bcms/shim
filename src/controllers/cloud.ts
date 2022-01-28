@@ -6,9 +6,14 @@ import {
   ControllerMethodPreRequestHandler,
   HTTPStatus,
 } from '@becomes/purple-cheetah/types';
+import { ShimConfig } from '../config';
 import { Manager } from '../manager';
 import { Service } from '../services';
-import type { CloudInstanceDomain, CloudInstanceFJE } from '../types';
+import type {
+  CloudInstanceDomain,
+  CloudInstanceFJE,
+  SecurityObject,
+} from '../types';
 import { CloudSocket } from '../util';
 
 interface Setup {
@@ -52,6 +57,33 @@ export const CloudController = createController<Setup>({
   },
   methods({ security }) {
     return {
+      test: createControllerMethod<
+        {
+          payload: {
+            test: string;
+          };
+          iid: string;
+        },
+        SecurityObject
+      >({
+        path: '/test',
+        type: 'post',
+        preRequestHandler: security(),
+        async handler({ payload, iid, errorHandler }) {
+          const cont = Manager.m.container.findById(iid);
+          if (!cont) {
+            throw errorHandler.occurred(
+              HTTPStatus.INTERNAL_SERVER_ERROR,
+              'No connection',
+            );
+          }
+          console.log({ payload });
+
+          return Service.security.enc(iid, {
+            test: 'pong',
+          });
+        },
+      }),
       updateData: createControllerMethod<
         {
           payload: {
@@ -68,11 +100,14 @@ export const CloudController = createController<Setup>({
         type: 'post',
         preRequestHandler: security(),
         async handler({ payload, iid }) {
-          const cont = Manager.m.container.findById(iid);
-          if (cont) {
-            await cont.update(payload);
-            await Manager.m.container.build(iid);
-            await Manager.m.container.run(iid);
+          if (ShimConfig.manage) {
+
+            const cont = Manager.m.container.findById(iid);
+            if (cont) {
+              await cont.update(payload);
+              await Manager.m.container.build(iid);
+              await Manager.m.container.run(iid);
+            }
           }
           return {
             ok: true,

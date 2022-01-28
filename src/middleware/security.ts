@@ -138,6 +138,7 @@ export const SecurityMiddleware = createMiddleware({
         );
         return;
       }
+      
       const checkSig = crypto
         .createHmac('sha256', instance.getSecret())
         .update(nonce + timestamp + JSON.stringify(req.body))
