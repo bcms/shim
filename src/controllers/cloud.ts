@@ -57,16 +57,16 @@ export const CloudController = createController<Setup>({
   },
   methods({ security }) {
     return {
-      test: createControllerMethod<
+      userUpdate: createControllerMethod<
         {
           payload: {
-            test: string;
+            _id: string;
           };
           iid: string;
         },
         SecurityObject
       >({
-        path: '/test',
+        path: '/user/update',
         type: 'post',
         preRequestHandler: security(),
         async handler({ payload, iid, errorHandler }) {
@@ -77,10 +77,13 @@ export const CloudController = createController<Setup>({
               'No connection',
             );
           }
-          console.log({ payload });
+          await cont.sendRequest({
+            path: '/calls/user/update',
+            payload,
+          });
 
           return Service.security.enc(iid, {
-            test: 'pong',
+            ok: true,
           });
         },
       }),
@@ -101,7 +104,6 @@ export const CloudController = createController<Setup>({
         preRequestHandler: security(),
         async handler({ payload, iid }) {
           if (ShimConfig.manage) {
-
             const cont = Manager.m.container.findById(iid);
             if (cont) {
               await cont.update(payload);
