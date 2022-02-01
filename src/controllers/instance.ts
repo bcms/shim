@@ -44,7 +44,7 @@ export const InstanceController = createController({
       }),
       userGetAll: createControllerMethod<
         unknown,
-        { user: CloudUser[] }
+        { users: CloudUser[] }
       >({
         path: '/user/all',
         type: 'post',
@@ -52,7 +52,7 @@ export const InstanceController = createController({
           const instanceId = request.headers['bcms-iid'] as string;
           if (ShimConfig.local) {
             return {
-              user: [Const.dev.user, Const.dev.normalUser],
+              users: [Const.dev.user, Const.dev.normalUser],
             };
           }
           return await Service.cloudConnection.send(
