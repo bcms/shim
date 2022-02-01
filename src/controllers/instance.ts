@@ -21,6 +21,12 @@ export const InstanceController = createController({
         async handler({ errorHandler, request }) {
           const instanceId = request.headers['bcms-iid'] as string;
           if (ShimConfig.local) {
+            if (request.query.user) {
+              return {
+                ok: true,
+                user: Const.dev.normalUser,
+              };
+            }
             return {
               ok: true,
               user: Const.dev.user,
@@ -44,9 +50,9 @@ export const InstanceController = createController({
         type: 'post',
         async handler({ errorHandler, request }) {
           const instanceId = request.headers['bcms-iid'] as string;
-          if (process.env.BCMS_LOCAL === 'true') {
+          if (ShimConfig.local) {
             return {
-              user: [Const.dev.user],
+              user: [Const.dev.user, Const.dev.normalUser],
             };
           }
           return await Service.cloudConnection.send(
