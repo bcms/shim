@@ -60,8 +60,6 @@ export const SecurityMiddleware = createMiddleware({
       let nonce = '';
       let timestamp = 0;
       let sig = '';
-      console.log(req.headers);
-      console.log(req.body);
       if (typeof req.headers['bcms-iid'] !== 'string') {
         next(
           errorHandler.occurred(
@@ -127,7 +125,6 @@ export const SecurityMiddleware = createMiddleware({
         next(errorHandler.occurred(HTTPStatus.FORBIDDEN, 'Blocked.'));
         return;
       }
-      console.log(Manager.m.container.findAll());
       const instance = Manager.m.container.findById(instanceId);
       // const instanceSecret = Service.cloudConnection.getSecret(instanceId);
       if (!instance) {

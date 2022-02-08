@@ -5,6 +5,7 @@ import { ShimConfig } from '../config';
 import type {
   CloudInstanceDomain,
   CloudInstanceFJE,
+  CloudInstancePlugin,
   Container,
   Manager as ManagerType,
   Nginx,
@@ -89,6 +90,7 @@ async function init() {
           });
           return false;
         }
+        logger.info('build', `Success ${cont.name}`);
         return true;
       },
       async remove(id) {
@@ -118,6 +120,7 @@ async function init() {
           c.err = '';
           c.alive = false;
         }
+        logger.info('remove', `Success ${cont.name}`);
         return true;
       },
       async restart(id) {
@@ -145,7 +148,12 @@ async function init() {
         } else {
           c.err = '';
           c.target.setStatus('active');
+          logger.info(
+            'restart',
+            `Container "${cont.name}" restarted.`,
+          );
         }
+        logger.info('restart', `Success ${cont.name}`);
         return true;
       },
       async start(id) {
@@ -175,6 +183,7 @@ async function init() {
           c.target.setStatus('active');
           logger.info('start', `Container "${cont.name}" started.`);
         }
+        logger.info('start', `Success ${cont.name}`);
         return true;
       },
       async stop(id) {
@@ -250,7 +259,35 @@ async function init() {
           events: CloudInstanceFJE[];
           functions: CloudInstanceFJE[];
           job: CloudInstanceFJE[];
+          plugins: CloudInstancePlugin[];
         }>(cont.id, '/data', {});
+        const plugins: CloudInstancePlugin[] = [];
+        for (let i = 0; i < result.plugins.length; i++) {
+          const plugin = result.plugins[i];
+          const pluginBuffer = await Service.cloudConnection.send<{
+            error?: {
+              message: string;
+            };
+            plugin?: {
+              type: 'Buffer';
+              data: Array<number>;
+            };
+          }>(cont.id, '/plugin', {
+            name: plugin.id,
+          });
+          if (pluginBuffer.error) {
+            logger.warn(
+              'pullInstanceData',
+              pluginBuffer.error.message,
+            );
+          } else if (pluginBuffer.plugin) {
+            plugins.push({
+              ...plugin,
+              buffer: Buffer.from(pluginBuffer.plugin.data),
+            });
+          }
+        }
+        result.plugins = plugins;
         await containers[cont.id].target.update(result);
         await containers[cont.id].target.build();
         await containers[cont.id].target.run({
@@ -280,37 +317,39 @@ async function init() {
   async function checkInstances() {
     for (const contId in containers) {
       const cont = containers[contId];
-      if (cont.target.status === 'active') {
-        if (await cont.target.checkHealth()) {
-          cont.alive = true;
-        } else {
-          cont.alive = false;
-        }
-      }
-      if (!cont.alive) {
+      if (cont.target.ready) {
         if (cont.target.status === 'active') {
-          if (cont.target.previousStatus === 'restarting') {
-            await toSafe(contId);
+          if (await cont.target.checkHealth()) {
+            cont.alive = true;
           } else {
-            await Manager.m.container.restart(contId);
+            cont.alive = false;
           }
-        } else if (cont.target.status === 'unknown') {
-          await Manager.m.container.build(contId);
-          await Manager.m.container.run(contId);
-        } else if (cont.target.status === 'down') {
-          await Manager.m.container.start(contId);
-        } else if (cont.target.status === 'down-to-error') {
-          if (cont.target.previousStatus !== 'down-to-error') {
-            await toSafe(contId);
+        }
+        if (!cont.alive) {
+          if (cont.target.status === 'active') {
+            if (cont.target.previousStatus === 'restarting') {
+              await toSafe(contId);
+            } else {
+              await Manager.m.container.restart(contId);
+            }
+          } else if (cont.target.status === 'unknown') {
+            await Manager.m.container.build(contId);
+            await Manager.m.container.run(contId);
+          } else if (cont.target.status === 'down') {
+            await Manager.m.container.start(contId);
+          } else if (cont.target.status === 'down-to-error') {
+            if (cont.target.previousStatus !== 'down-to-error') {
+              await toSafe(contId);
+            }
           }
         }
       }
     }
-    setTimeout(() => {
-      checkInstances().catch((error) => {
-        logger.error('checkInstances', error);
-      });
-    }, 5000);
+    // setTimeout(() => {
+    //   checkInstances().catch((error) => {
+    //     logger.error('checkInstances', error);
+    //   });
+    // }, 5000);
   }
   async function toSafe(contId: string) {
     const inst = containers[contId];
@@ -451,9 +490,15 @@ async function init() {
       }
       await nginx.updateConfig();
       await nginx.copyConfigToContainer();
+
       checkInstances().catch((err) => {
         logger.error('checkInstance', err);
       });
+      setInterval(() => {
+        checkInstances().catch((err) => {
+          logger.error('checkInstance', err);
+        });
+      }, 5000);
     } else {
       for (const contId in containers) {
         containers[contId].target.setStatus('active');

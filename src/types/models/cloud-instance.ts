@@ -37,11 +37,37 @@ export interface CloudInstanceFJE {
   code?: string;
 }
 
+// eslint-disable-next-line no-shadow
+export enum CloudInstancePluginType {
+  /**
+   * Local plugin upload to an instance
+   */
+  LOCAL = 'L',
+  /**
+   * Remote plugin, should be downloaded from the BCMS Cloud.
+   */
+  REMOTE = 'R',
+  /**
+   * Plugin present in an Instance bundle.
+   */
+  BUNDLE = 'B',
+}
+export interface CloudInstancePlugin {
+  id: string;
+  name: string;
+  tag: string;
+  type: CloudInstancePluginType;
+  version?: string;
+  active?: boolean;
+  buffer?: Buffer;
+}
+
 export interface CloudInstanceData {
   domains: CloudInstanceDomain[];
   functions: CloudInstanceFJE[];
   jobs: CloudInstanceFJE[];
   events: CloudInstanceFJE[];
+  plugins: CloudInstancePlugin[];
 }
 
 export interface CloudInstanceUpdateData {
@@ -49,6 +75,7 @@ export interface CloudInstanceUpdateData {
   functions?: CloudInstanceFJE[];
   jobs?: CloudInstanceFJE[];
   events?: CloudInstanceFJE[];
+  plugins?: CloudInstancePlugin[];
 }
 export interface CloudInstanceUpdateResult {
   domains: boolean;

@@ -12,6 +12,7 @@ import { Service } from '../services';
 import type {
   CloudInstanceDomain,
   CloudInstanceFJE,
+  CloudInstancePlugin,
   SecurityObject,
 } from '../types';
 import { CloudSocket } from '../util';
@@ -94,10 +95,11 @@ export const CloudController = createController<Setup>({
             functions: CloudInstanceFJE[];
             events: CloudInstanceFJE[];
             jobs: CloudInstanceFJE[];
+            plugins: CloudInstancePlugin[];
           };
           iid: string;
         },
-        { ok: boolean }
+        SecurityObject
       >({
         path: '/update-data',
         type: 'post',
@@ -106,29 +108,31 @@ export const CloudController = createController<Setup>({
           if (ShimConfig.manage) {
             const cont = Manager.m.container.findById(iid);
             if (cont) {
+              CloudSocket.close(iid);
               await cont.update(payload);
               await Manager.m.container.build(iid);
               await Manager.m.container.run(iid);
             }
           }
-          return {
+          return Service.security.enc(iid, {
             ok: true,
-          };
+          });
         },
       }),
       getLogs: createControllerMethod<
-        void,
         {
-          ok: boolean;
-        }
+          iid: string;
+        },
+        SecurityObject
       >({
         path: '/logs',
         type: 'get',
-        async handler() {
-          CloudSocket.open('6169756ef956f26df700c2d7');
-          return {
-            ok: false,
-          };
+        preRequestHandler: security(),
+        async handler({ iid }) {
+          CloudSocket.open(iid);
+          return Service.security.enc(iid, {
+            ok: true,
+          });
         },
       }),
     };

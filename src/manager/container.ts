@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { spawn } from 'child_process';
 import {
   createHttpClient,
   useFS,
@@ -17,6 +18,7 @@ import { ChildProcess } from '@banez/child_process';
 import type { DockerArgs } from '@banez/docker/types';
 import type { ChildProcessOnChunkHelperOutput } from '@banez/child_process/types';
 import { HttpClientResponseError } from '@becomes/purple-cheetah/types';
+import { Service } from '../services';
 
 export async function createContainer(config: {
   id: string;
@@ -25,6 +27,7 @@ export async function createContainer(config: {
   version?: string;
 }): Promise<Container> {
   let secret = '';
+  config.version = '1.0.0';
   const baseFSPath = path.join(process.cwd(), 'storage', config.id);
   const logger = useLogger({ name: `Instance ${config.id}` });
   const http = createHttpClient({
@@ -56,6 +59,46 @@ export async function createContainer(config: {
     dbInfo = JSON.parse(await fs.readString('db-info.json'));
   }
 
+  async function waitForReady() {
+    return await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve();
+      }, 60000);
+      const proc = spawn(
+        'docker',
+        ['logs', '--tail', '20', '-f', self.name],
+        {
+          stdio: 'pipe',
+        },
+      );
+      proc.stdout.on('data', (c: Buffer) => {
+        const chunk = c.toString();
+        if (chunk.includes('Started Successfully')) {
+          self.ready = true;
+          proc.kill();
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+      proc.on('close', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      proc.on('error', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      proc.on('disconnect', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      proc.on('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+  }
+
   const self: Container = {
     id: config.id,
     info: undefined,
@@ -63,11 +106,13 @@ export async function createContainer(config: {
     name: `bcms-instance-${config.id}`,
     status: config.status || 'unknown',
     previousStatus: 'unknown',
+    ready: false,
     data: {
       domains: [],
       events: [],
       functions: [],
       jobs: [],
+      plugins: [],
     },
     setStatus(status) {
       self.previousStatus = self.status as CloudInstanceStatus;
@@ -105,7 +150,7 @@ export async function createContainer(config: {
         if (res instanceof HttpClientResponseError) {
           logger.error(place, res);
         } else {
-          return res.ok
+          return res.ok;
         }
       } catch (err) {
         const error = err as { code: string };
@@ -217,6 +262,51 @@ export async function createContainer(config: {
           );
         }
       }
+      if (data.plugins) {
+        self.data.plugins = [];
+        const basePath = `plugins`;
+        if (await fs.exist(basePath)) {
+          await fs.deleteDir(basePath);
+        }
+        await fs.mkdir(basePath);
+
+        for (let i = 0; i < data.plugins.length; i++) {
+          const item = data.plugins[i];
+          if (!item.buffer) {
+            const pluginBuffer = await Service.cloudConnection.send<{
+              error?: {
+                message: string;
+              };
+              plugin?: {
+                type: 'Buffer';
+                data: Array<number>;
+              };
+            }>(self.id, '/plugin', {
+              name: item.id,
+            });
+            if (pluginBuffer.error) {
+              logger.warn(
+                'pullInstanceData',
+                pluginBuffer.error.message,
+              );
+            } else if (pluginBuffer.plugin) {
+              item.buffer = Buffer.from(pluginBuffer.plugin.data);
+            }
+          }
+          self.data.plugins.push({
+            id: item.id,
+            active: item.active,
+            buffer: item.buffer,
+            version: item.version,
+            name: item.name,
+            type: item.type,
+            tag: item.tag,
+          });
+          if (item.active && item.buffer) {
+            await fs.save([basePath, item.id], item.buffer);
+          }
+        }
+      }
       return output;
     },
     streamLogs({ onChunk }) {
@@ -238,15 +328,19 @@ export async function createContainer(config: {
         });
         if (exo.err) {
           logger.error('start', {
-            msg: 'Failed to start bcms-proxy',
+            msg: `Failed to start ${self.name}`,
             exo,
           });
+        } else {
+          waitForReady();
         }
         return exo;
       }
       await Docker.container.start(self.name, options);
+      waitForReady();
     },
     async stop(options) {
+      self.ready = false;
       if (!options) {
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
@@ -258,7 +352,7 @@ export async function createContainer(config: {
         });
         if (exo.err) {
           logger.error('stop', {
-            msg: 'Failed to stop bcms-proxy',
+            msg: `Failed to stop ${self.name}`,
             exo,
           });
         }
@@ -267,6 +361,7 @@ export async function createContainer(config: {
       await Docker.container.stop(self.name, options);
     },
     async remove(options) {
+      self.ready = false;
       if (await Docker.container.exists(self.name)) {
         await self.updateInfo();
         if (self.info && self.info.State && self.info.State.Running) {
@@ -303,6 +398,7 @@ export async function createContainer(config: {
       }
     },
     async restart(options) {
+      self.ready = false;
       if (!options) {
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
@@ -318,9 +414,11 @@ export async function createContainer(config: {
             exo,
           });
         }
+        waitForReady();
         return exo;
       }
       await Docker.container.restart(self.name, options);
+      waitForReady();
     },
     async build(options) {
       if (await fs.exist('Dockerfile', true)) {
@@ -348,7 +446,6 @@ export async function createContainer(config: {
       if (await fs.exist('bcms.config.js', true)) {
         await fs.deleteFile('bcms.config.js');
       }
-      // TODO: Handle plugins
       await fs.save(
         'bcms.config.js',
         `module.exports = ${JSON.stringify(
@@ -391,6 +488,7 @@ export async function createContainer(config: {
               scope: self.name,
               secret: jwtSecret,
             },
+            plugins: self.data.plugins.map((e) => e.tag),
           } as CloudInstanceConfig,
           null,
           '  ',
@@ -431,9 +529,6 @@ export async function createContainer(config: {
           doNotThrowError: true,
           onChunk: ChildProcess.onChunkHelper(exo),
         });
-        if (exo.err) {
-          logger.info('run - remove', exo);
-        }
       }
       const args: DockerArgs = {
         '-d': [],
@@ -465,6 +560,7 @@ export async function createContainer(config: {
           exo,
         });
       }
+      waitForReady();
       // await Docker.container.run({
       //   args,
       //   onChunk: options ? options.onChunk : ChildProcess.onChunkHelper(exo),
@@ -472,13 +568,13 @@ export async function createContainer(config: {
       //     ? options.doNotThrowError
       //     : undefined,
       // });
-      if (options && options.waitFor) {
-        await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            resolve();
-          }, options.waitFor);
-        });
-      }
+      // if (options && options.waitFor) {
+      //   await new Promise<void>((resolve) => {
+      //     setTimeout(() => {
+      //       resolve();
+      //     }, options.waitFor);
+      //   });
+      // }
       return exo;
     },
   };

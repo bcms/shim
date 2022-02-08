@@ -37,7 +37,7 @@ export class CloudSocket {
       const socket = this.cloudSocket;
       const proc = spawn(
         'docker',
-        ['logs', '--tail', '1', '-f', `bcms-instance-${instanceId}`],
+        ['logs', '--tail', '20', '-f', `bcms-instance-${instanceId}`],
         {
           stdio: 'pipe',
         },
@@ -67,13 +67,16 @@ export class CloudSocket {
         onChunk('stderr', chunk);
       });
       proc.on('close', () => {
-        this.close(instanceId);
+        CloudSocket.close(instanceId);
       });
       proc.on('error', () => {
-        this.close(instanceId);
+        CloudSocket.close(instanceId);
       });
       proc.on('disconnect', () => {
-        this.close(instanceId);
+        CloudSocket.close(instanceId);
+      });
+      proc.on('exit', () => {
+        CloudSocket.close(instanceId);
       });
       this.connections[instanceId] = {
         closeAt: Date.now() + this.TTL,
@@ -92,6 +95,8 @@ export class CloudSocket {
   static refresh(instanceId: string): void {
     if (this.connections[instanceId]) {
       this.connections[instanceId].closeAt = Date.now() + this.TTL;
+    } else {
+      this.open(instanceId);
     }
   }
 }

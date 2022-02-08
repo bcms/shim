@@ -93,7 +93,7 @@ export const InstanceController = createController({
               ok: true,
             };
           }
-          return { ok: false };
+          return { ok: true };
         },
       }),
 
