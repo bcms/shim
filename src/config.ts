@@ -20,4 +20,6 @@ export const ShimConfig: ShimConfigType = {
       ? parseInt(process.env.BCMS_INSTANCE_PORT_TO)
       : 1300,
   },
+  storagePathOnHost:
+    process.env.BCMS_STORAGE_PATH_ON_HOST || '/app/storage',
 };
