@@ -437,6 +437,8 @@ export async function createContainer(config: {
           'COPY functions /app/functions',
           'COPY jobs /app/jobs',
           'COPY plugins /app/plugins',
+          'COPY uploads /app/uploads',
+          'COPY logs /app/logs',
           'COPY bcms.config.js /app/bcms.config.js',
           'COPY shim.json /app/shim.json',
           '',
@@ -494,6 +496,13 @@ export async function createContainer(config: {
           '  ',
         )}`,
       );
+      // if (await Docker.container.exists(self.name)) {
+      //   await self.stop();
+      //   await self.remove();
+      // }
+      // if (await Docker.image.exists(self.name)) {
+      //   await Docker.image.remove(self.name)
+      // }
       if (!options) {
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
@@ -533,9 +542,9 @@ export async function createContainer(config: {
       const args: DockerArgs = {
         '-d': [],
         '-v': [
+          `${ShimConfig.storagePathOnHost}/${self.id}/logs:/app/logs`,
           '/var/run/docker.sock:/var/run/docker.sock',
-          `${baseFSPath}/logs:/app/logs`,
-          `${baseFSPath}/uploads:/app/uploads`,
+          `${ShimConfig.storagePathOnHost}/${self.id}/uploads:/app/uploads`,
         ],
         '--name': self.name,
         '--hostname': self.name,
