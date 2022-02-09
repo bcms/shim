@@ -72,6 +72,14 @@ const nConfig = {
         proxy_set_header bcmsrip $remote_addr ;
         proxy_pass http://@bcms-shim-ip:1279/;
       }
+      location /_instance-proxy/api/socket/server {
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+  
+        proxy_pass http://@bcms-shim-ip:1279/_instance-proxy/api/socket/server/;
+      }
     }
   }
   `,
@@ -177,14 +185,29 @@ export function createNginx({ manager }: NginxConfig): Nginx {
         await fs.deleteDir('proxy/ssl');
       }
       const containers = manager.container.findAll();
-      let rootProxies = '';
+      const rootProxies = '';
       for (let i = 0; i < containers.length; i++) {
         const container = containers[i];
         await container.updateInfo();
         for (let j = 0; j < container.data.domains.length; j++) {
           const domain = container.data.domains[j];
-          if (!domain.name.endsWith('yourbcms.com')) {
-            if (domain.ssl) {
+          if (domain.name.endsWith('yourbcms.com')) {
+            servers.push(
+              getConfig({
+                domain: domain.name,
+                ip:
+                  container.info &&
+                  container.info.NetworkSettings.Networks.bcms &&
+                  container.info.NetworkSettings.Networks.bcms
+                    .IPAddress
+                    ? container.info.NetworkSettings.Networks.bcms
+                        .IPAddress
+                    : '10.20.30.1',
+                type: 'http',
+              }),
+            );
+          } else {
+            if (domain.ssl && domain.ssl.crt && domain.ssl.key) {
               await fs.save(
                 ['ssl', domain.name, 'crt'],
                 domain.ssl.crt,
@@ -227,48 +250,48 @@ export function createNginx({ manager }: NginxConfig): Nginx {
                 }),
               );
             }
-          } else {
-            const domainHash = Buffer.from(domain.name).toString(
-              'hex',
-            );
-            if (!container.info || !container.info?.NetworkSettings) {
-              logger.warn('', container.info);
-            }
-            const ip =
-              container.info &&
-              container.info.NetworkSettings.Networks.bcms &&
-              container.info.NetworkSettings.Networks.bcms.IPAddress
-                ? container.info.NetworkSettings.Networks.bcms
-                    .IPAddress
-                : '10.20.30.1';
-            rootProxies += `
-            # ${container.name}
-            location /${domainHash}/api/socket/server {
-              proxy_http_version 1.1;
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-              proxy_set_header Host $host;
-        
-              proxy_pass http://${ip}:8080/api/socket/server/;
-            }
-            location /${domainHash}/api {
-              proxy_set_header bcmsrip $remote_addr ;
-              proxy_pass http://${ip}:8080/api;
-            }
-            location /${domainHash}/sockjs-node {
-              proxy_http_version 1.1;
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-              proxy_set_header Host $host;
-        
-              proxy_pass http://${ip}:8080/sockjs-node;
-            }
-            location /${domainHash}/ {
-              proxy_set_header bcmsrip $remote_addr ;
-              proxy_pass http://${ip}:8080/;
-            }
-            `;
           }
+          //   const domainHash = Buffer.from(domain.name).toString(
+          //     'hex',
+          //   );
+          //   if (!container.info || !container.info?.NetworkSettings) {
+          //     logger.warn('', container.info);
+          //   }
+          //   const ip =
+          //     container.info &&
+          //     container.info.NetworkSettings.Networks.bcms &&
+          //     container.info.NetworkSettings.Networks.bcms.IPAddress
+          //       ? container.info.NetworkSettings.Networks.bcms
+          //           .IPAddress
+          //       : '10.20.30.1';
+          //   rootProxies += `
+          //   # ${container.name}
+          //   location /${domainHash}/api/socket/server {
+          //     proxy_http_version 1.1;
+          //     proxy_set_header Upgrade $http_upgrade;
+          //     proxy_set_header Connection "upgrade";
+          //     proxy_set_header Host $host;
+
+          //     proxy_pass http://${ip}:8080/api/socket/server/;
+          //   }
+          //   location /${domainHash}/api {
+          //     proxy_set_header bcmsrip $remote_addr ;
+          //     proxy_pass http://${ip}:8080/api;
+          //   }
+          //   location /${domainHash}/sockjs-node {
+          //     proxy_http_version 1.1;
+          //     proxy_set_header Upgrade $http_upgrade;
+          //     proxy_set_header Connection "upgrade";
+          //     proxy_set_header Host $host;
+
+          //     proxy_pass http://${ip}:8080/sockjs-node;
+          //   }
+          //   location /${domainHash}/ {
+          //     proxy_set_header bcmsrip $remote_addr ;
+          //     proxy_pass http://${ip}:8080/;
+          //   }
+          //   `;
+          // }
         }
       }
       let info: DockerContainerInfo | undefined;

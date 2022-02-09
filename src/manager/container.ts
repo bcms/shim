@@ -62,6 +62,7 @@ export async function createContainer(config: {
   async function waitForReady() {
     return await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
+        self.ready = true;
         resolve();
       }, 60000);
       const proc = spawn(
