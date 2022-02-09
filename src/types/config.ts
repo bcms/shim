@@ -10,4 +10,5 @@ export interface ShimConfig {
     from: number;
     to: number;
   };
+  storagePathOnHost: string;
 }
