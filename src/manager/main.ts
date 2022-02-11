@@ -492,7 +492,7 @@ async function init() {
       let loop = true;
       while (loop) {
         const cont = containers[ids[pointer]];
-        if (
+        if (cont &&
           await new Promise<boolean>((resolve) => {
             pullInstanceData(cont.target, resolve, 0);
           })
