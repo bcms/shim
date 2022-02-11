@@ -27,7 +27,6 @@ export async function createContainer(config: {
   version?: string;
 }): Promise<Container> {
   let secret = '';
-  config.version = '1.0.0';
   const baseFSPath = path.join(process.cwd(), 'storage', config.id);
   const logger = useLogger({ name: `Instance ${config.id}` });
   const http = createHttpClient({
@@ -101,6 +100,7 @@ export async function createContainer(config: {
   }
 
   const self: Container = {
+    version: config.version || 'latest',
     id: config.id,
     info: undefined,
     port: config.port || '8080',
@@ -262,6 +262,9 @@ export async function createContainer(config: {
             Buffer.from(item.code as string, 'base64').toString(),
           );
         }
+      }
+      if (data.version) {
+      self.version = data.version
       }
       if (data.plugins) {
         self.data.plugins = [];
@@ -429,7 +432,7 @@ export async function createContainer(config: {
         'Dockerfile',
         [
           `FROM becomes/cms-backend${
-            config.version ? ':' + config.version : ''
+            self.version ? ':' + self.version : ''
           }`,
           '',
           'WORKDIR /app',
