@@ -21,6 +21,7 @@ export interface Container {
   info?: DockerContainerInfo;
   data: CloudInstanceData;
   ready: boolean;
+  version: string;
   updateInfo(): Promise<DockerContainerInfo | undefined>;
   createSecret(): Promise<string>;
   getSecret(): string;

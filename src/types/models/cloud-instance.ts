@@ -76,6 +76,7 @@ export interface CloudInstanceUpdateData {
   jobs?: CloudInstanceFJE[];
   events?: CloudInstanceFJE[];
   plugins?: CloudInstancePlugin[];
+  version?: string;
 }
 export interface CloudInstanceUpdateResult {
   domains: boolean;

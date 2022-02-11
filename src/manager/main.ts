@@ -247,6 +247,26 @@ async function init() {
     },
   };
 
+  async function updateContainerVersions(): Promise<void> {
+    for (const contId in containers) {
+      const cont = containers[contId];
+
+      if (Service.cloudConnection.isConnected(contId)) {
+        try {
+          const result = await Service.cloudConnection.send<{
+            version: string;
+          }>(contId, '/version', {});
+          if (result.version !== cont.target.version) {
+            await cont.target.update({ version: result.version });
+            await cont.target.build();
+            await cont.target.run();
+          }
+        } catch (error) {
+          logger.warn('updateContainerVersion', { cont, error });
+        }
+      }
+    }
+  }
   async function pullInstanceData(
     cont: Container,
     resolve: (value: boolean) => void,
@@ -260,6 +280,7 @@ async function init() {
           functions: CloudInstanceFJE[];
           job: CloudInstanceFJE[];
           plugins: CloudInstancePlugin[];
+          version: string;
         }>(cont.id, '/data', {});
         const plugins: CloudInstancePlugin[] = [];
         for (let i = 0; i < result.plugins.length; i++) {
@@ -499,6 +520,11 @@ async function init() {
           logger.error('checkInstance', err);
         });
       }, 5000);
+      setInterval(() => {
+        updateContainerVersions().catch((err) => {
+          logger.error('updateContainerVersion', err);
+        });
+      }, 60000);
     } else {
       for (const contId in containers) {
         containers[contId].target.setStatus('active');
