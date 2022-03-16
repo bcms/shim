@@ -256,6 +256,10 @@ async function init() {
           const result = await Service.cloudConnection.send<{
             version: string;
           }>(contId, '/version', {});
+          logger.info(
+            'Container version' + cont.target.id,
+            `[c_${cont.target.version}, n_${result.version}]`,
+          );
           if (result.version !== cont.target.version) {
             await cont.target.update({ version: result.version });
             await cont.target.build();
@@ -492,10 +496,11 @@ async function init() {
       let loop = true;
       while (loop) {
         const cont = containers[ids[pointer]];
-        if (cont &&
-          await new Promise<boolean>((resolve) => {
+        if (
+          cont &&
+          (await new Promise<boolean>((resolve) => {
             pullInstanceData(cont.target, resolve, 0);
-          })
+          }))
         ) {
           pointer++;
           if (pointer === ids.length) {

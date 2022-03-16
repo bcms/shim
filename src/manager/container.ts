@@ -264,7 +264,7 @@ export async function createContainer(config: {
         }
       }
       if (data.version) {
-      self.version = data.version
+        self.version = data.version;
       }
       if (data.plugins) {
         self.data.plugins = [];
@@ -428,6 +428,7 @@ export async function createContainer(config: {
       if (await fs.exist('Dockerfile', true)) {
         await fs.deleteFile('Dockerfile');
       }
+      console.log(self.id, self.version);
       await fs.save(
         'Dockerfile',
         [
