@@ -92,6 +92,8 @@ const nConfig = {
     access_log /var/log/nginx/@domain-access.log;
     error_log /var/log/nginx/@domain-error.log;
 
+    client_max_body_size 100M;
+
     location /api/socket/server {
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
@@ -126,6 +128,8 @@ const nConfig = {
 
     access_log /var/log/nginx/@domain-ssl-access.log;
     error_log /var/log/nginx/@domain-ssl-error.log;
+
+    client_max_body_size 100M;
 
     ssl_certificate         /etc/nginx/ssl/@domain/crt;
     ssl_certificate_key     /etc/nginx/ssl/@domain/key;
