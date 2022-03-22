@@ -32,6 +32,7 @@ async function init() {
     [id: string]: {
       target: Container;
       alive: boolean;
+      aliveFails: number;
       err: string;
       safe: boolean;
     };
@@ -345,9 +346,14 @@ async function init() {
       if (cont.target.ready) {
         if (cont.target.status === 'active') {
           if (await cont.target.checkHealth()) {
+            cont.aliveFails = 0;
             cont.alive = true;
           } else {
-            cont.alive = false;
+            cont.aliveFails++;
+            if (cont.aliveFails > 3) {
+              cont.alive = false;
+              cont.aliveFails = 0;
+            }
           }
         }
         if (!cont.alive) {
@@ -355,6 +361,10 @@ async function init() {
             if (cont.target.previousStatus === 'restarting') {
               await toSafe(contId);
             } else {
+              logger.warn(
+                'checkInstances',
+                `Restarting "${contId}" because of check health issue.`,
+              );
               await Manager.m.container.restart(contId);
             }
           } else if (cont.target.status === 'unknown') {
@@ -439,6 +449,7 @@ async function init() {
         });
         containers[contId] = {
           alive: false,
+          aliveFails: 0,
           safe: false,
           err: '',
           target: cont,
@@ -480,6 +491,7 @@ async function init() {
             id: contId,
           }),
           alive: false,
+          aliveFails: 0,
           safe: false,
           err: '',
         };
