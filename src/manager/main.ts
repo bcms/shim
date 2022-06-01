@@ -43,6 +43,7 @@ async function init() {
   let nginx: Nginx;
 
   Manager.m = {
+    nginx: undefined as never,
     container: {
       findAll() {
         return Object.keys(containers).map(
@@ -319,6 +320,11 @@ async function init() {
         await containers[cont.id].target.run({
           waitFor: 1000,
         });
+        await nginx.updateConfig();
+        await nginx.stop();
+        await nginx.build();
+        await nginx.run();
+        console.log('HERE');
         resolve(true);
       } catch (error) {
         if (run > 20) {
@@ -500,6 +506,7 @@ async function init() {
     await Service.cloudConnection.connect();
     if (ShimConfig.manage) {
       nginx = createNginx({ manager: Manager.m });
+      Manager.m.nginx = nginx;
       await nginx.updateConfig();
       await nginx.build();
       await nginx.run();

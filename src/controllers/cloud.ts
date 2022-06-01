@@ -109,9 +109,22 @@ export const CloudController = createController<Setup>({
             const cont = Manager.m.container.findById(iid);
             if (cont) {
               CloudSocket.close(iid);
-              await cont.update(payload);
-              await Manager.m.container.build(iid);
-              await Manager.m.container.run(iid);
+              const thingsToUpdate = await cont.update(payload);
+              if (
+                thingsToUpdate.events ||
+                thingsToUpdate.functions ||
+                thingsToUpdate.jobs ||
+                thingsToUpdate.plugins
+              ) {
+                await Manager.m.container.build(iid);
+                await Manager.m.container.run(iid);
+              }
+              if (thingsToUpdate.domains) {
+                await Manager.m.nginx.updateConfig();
+                await Manager.m.nginx.stop();
+                await Manager.m.nginx.build();
+                await Manager.m.nginx.run();
+              }
             }
           }
           return Service.security.enc(iid, {

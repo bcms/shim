@@ -1,6 +1,8 @@
 import type { Container } from './container';
+import type { Nginx } from './nginx';
 
 export interface Manager {
+  nginx: Nginx;
   container: {
     findAll(): Container[];
     findByDomain(domainName: string): Container | undefined;

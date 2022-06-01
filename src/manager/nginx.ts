@@ -250,7 +250,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
                       ? container.info.NetworkSettings.Networks.bcms
                           .IPAddress
                       : '10.20.30.1',
-                  type: 'https',
+                  type: 'http',
                 }),
               );
             }

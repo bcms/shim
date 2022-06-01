@@ -83,6 +83,7 @@ export interface CloudInstanceUpdateResult {
   functions: boolean;
   events: boolean;
   jobs: boolean;
+  plugins: boolean;
 }
 
 export interface CloudInstanceConfig {

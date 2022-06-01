@@ -192,12 +192,37 @@ export async function createContainer(config: {
     },
     async update(data) {
       const output: CloudInstanceUpdateResult = {
-        domains: !!data.domains,
+        domains: false,
         events: !!data.events,
         functions: !!data.functions,
         jobs: !!data.jobs,
+        plugins: !!data.plugins,
       };
       if (data.domains) {
+        let newDomains = false;
+        const removeDomains = false;
+        if (self.data.domains.length !== data.domains.length) {
+          output.domains = true;
+        } else {
+          for (let i = 0; i < data.domains.length; i++) {
+            const domain = data.domains[i];
+            let found = false;
+            for (let j = 0; j < self.data.domains.length; j++) {
+              const selfDomain = self.data.domains[j];
+              if (domain.name === selfDomain.name) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              newDomains = true;
+              break;
+            }
+          }
+          if (newDomains || removeDomains) {
+            output.domains = true;
+          }
+        }
         self.data.domains = data.domains;
       }
       if (data.functions) {
@@ -495,7 +520,9 @@ export async function createContainer(config: {
               scope: self.name,
               secret: jwtSecret,
             },
-            plugins: self.data.plugins.map((e) => e.tag),
+            plugins: self.data.plugins
+              .filter((e) => e.active)
+              .map((e) => e.tag),
           } as CloudInstanceConfig,
           null,
           '  ',
