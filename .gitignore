@@ -13,6 +13,7 @@
 /proxy/nginx.conf
 /lib
 /tsconfig.tsbuildinfo
+/proxy/nginx.conf
 
 # Logs
 logs
