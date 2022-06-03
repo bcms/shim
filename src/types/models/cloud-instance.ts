@@ -68,6 +68,8 @@ export interface CloudInstanceData {
   jobs: CloudInstanceFJE[];
   events: CloudInstanceFJE[];
   plugins: CloudInstancePlugin[];
+  deps?: CloudInstanceDep[];
+  proxyConfig?: CloudInstanceProxyConfig[];
 }
 
 export interface CloudInstanceUpdateData {
@@ -77,6 +79,8 @@ export interface CloudInstanceUpdateData {
   events?: CloudInstanceFJE[];
   plugins?: CloudInstancePlugin[];
   version?: string;
+  deps?: CloudInstanceDep[];
+  proxyConfig?: CloudInstanceProxyConfig[];
 }
 export interface CloudInstanceUpdateResult {
   domains: boolean;
@@ -84,6 +88,19 @@ export interface CloudInstanceUpdateResult {
   events: boolean;
   jobs: boolean;
   plugins: boolean;
+  deps: boolean;
+  proxyConfig: boolean;
+}
+
+export interface CloudInstanceDep {
+  name: string;
+  version: string;
+}
+
+export interface CloudInstanceProxyConfig {
+  _id: string;
+  name: string;
+  code: string;
 }
 
 export interface CloudInstanceConfig {

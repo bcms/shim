@@ -197,6 +197,8 @@ export async function createContainer(config: {
         functions: !!data.functions,
         jobs: !!data.jobs,
         plugins: !!data.plugins,
+        deps: !!data.deps,
+        proxyConfig: !!data.proxyConfig,
       };
       if (data.domains) {
         let newDomains = false;
@@ -336,6 +338,23 @@ export async function createContainer(config: {
           }
         }
       }
+      if (data.deps) {
+        self.data.deps = data.deps;
+        await fs.save(
+          'custom-package.json',
+          JSON.stringify({
+            name: 'custom-packages',
+            version: '0.0.1',
+            dependencies: data.deps.reduce((prev, curr) => {
+              prev[curr.name] = curr.version;
+              return prev;
+            }, {} as { [name: string]: string }),
+          }),
+        );
+      }
+      if (data.proxyConfig) {
+        self.data.proxyConfig = data.proxyConfig;
+      }
       return output;
     },
     streamLogs({ onChunk }) {
@@ -453,7 +472,6 @@ export async function createContainer(config: {
       if (await fs.exist('Dockerfile', true)) {
         await fs.deleteFile('Dockerfile');
       }
-      console.log(self.id, self.version);
       await fs.save(
         'Dockerfile',
         [
@@ -471,6 +489,9 @@ export async function createContainer(config: {
           'COPY logs /app/logs',
           'COPY bcms.config.js /app/bcms.config.js',
           'COPY shim.json /app/shim.json',
+          (await fs.exist('custom-package.json', true))
+            ? 'COPY custom-package.json /app/custom-package.json'
+            : '',
           '',
           'ENTRYPOINT ["npm", "start"]',
         ].join('\n'),

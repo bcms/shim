@@ -3,9 +3,11 @@ import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { Module } from '@becomes/purple-cheetah/types';
 import { ShimConfig } from '../config';
 import type {
+  CloudInstanceDep,
   CloudInstanceDomain,
   CloudInstanceFJE,
   CloudInstancePlugin,
+  CloudInstanceProxyConfig,
   Container,
   Manager as ManagerType,
   Nginx,
@@ -40,6 +42,14 @@ async function init() {
   const fs = useFS({
     base: path.join(process.cwd()),
   });
+  if (await fs.exist(['storage', 'storage-path.txt'], true)) {
+    ShimConfig.storagePathOnHost = (
+      await fs.readString(['storage', 'storage-path.txt'])
+    )
+      .replace(/ /g, '')
+      .replace(/\n/g, '');
+  }
+  console.log(ShimConfig.storagePathOnHost);
   let nginx: Nginx;
 
   Manager.m = {
@@ -287,6 +297,8 @@ async function init() {
           job: CloudInstanceFJE[];
           plugins: CloudInstancePlugin[];
           version: string;
+          deps?: CloudInstanceDep[];
+          proxyConfig?: CloudInstanceProxyConfig[];
         }>(cont.id, '/data', {});
         const plugins: CloudInstancePlugin[] = [];
         for (let i = 0; i < result.plugins.length; i++) {
@@ -324,7 +336,6 @@ async function init() {
         await nginx.stop();
         await nginx.build();
         await nginx.run();
-        console.log('HERE');
         resolve(true);
       } catch (error) {
         if (run > 20) {

@@ -114,12 +114,16 @@ export const CloudController = createController<Setup>({
                 thingsToUpdate.events ||
                 thingsToUpdate.functions ||
                 thingsToUpdate.jobs ||
-                thingsToUpdate.plugins
+                thingsToUpdate.plugins ||
+                thingsToUpdate.deps
               ) {
                 await Manager.m.container.build(iid);
                 await Manager.m.container.run(iid);
               }
-              if (thingsToUpdate.domains) {
+              if (
+                thingsToUpdate.domains ||
+                thingsToUpdate.proxyConfig
+              ) {
                 await Manager.m.nginx.updateConfig();
                 await Manager.m.nginx.stop();
                 await Manager.m.nginx.build();

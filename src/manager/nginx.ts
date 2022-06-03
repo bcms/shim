@@ -297,6 +297,16 @@ export function createNginx({ manager }: NginxConfig): Nginx {
           //   `;
           // }
         }
+        if (container.data.proxyConfig) {
+          for (
+            let j = 0;
+            j < container.data.proxyConfig.length;
+            j++
+          ) {
+            const pConfig = container.data.proxyConfig[j];
+            servers.push(`server {\n${pConfig.code}\n}`);
+          }
+        }
       }
       let info: DockerContainerInfo | undefined;
       try {
@@ -499,11 +509,14 @@ export function createNginx({ manager }: NginxConfig): Nginx {
       const args: DockerArgs = {
         '-d': [],
         '-p': ['80:80', '443:443', '3000:3000'],
-        '-v': `${path.join(
-          process.cwd(),
-          'proxy',
-          'ssl',
-        )}:/etc/nginx/ssl`,
+        '-v': [
+          // `${path.join(
+          //   process.cwd(),
+          //   'proxy',
+          //   'ssl',
+          // )}:/etc/nginx/ssl`,
+          `${ShimConfig.storagePathOnHost}:/storage`,
+        ],
         '--network': 'bcms',
         '--name': name,
         '--hostname': name,
