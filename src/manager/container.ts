@@ -19,6 +19,7 @@ import type { DockerArgs } from '@banez/docker/types';
 import type { ChildProcessOnChunkHelperOutput } from '@banez/child_process/types';
 import { HttpClientResponseError } from '@becomes/purple-cheetah/types';
 import { Service } from '../services';
+import { GithubContainerVersionsManager } from '../util';
 
 export async function createContainer(config: {
   id: string;
@@ -73,7 +74,10 @@ export async function createContainer(config: {
       );
       proc.stdout.on('data', (c: Buffer) => {
         const chunk = c.toString();
-        if (chunk.includes('Started Successfully')) {
+        if (
+          chunk.includes('Started Successfully') ||
+          chunk.includes('[ERROR]')
+        ) {
           self.ready = true;
           proc.kill();
           clearTimeout(timeout);
@@ -100,7 +104,8 @@ export async function createContainer(config: {
   }
 
   const self: Container = {
-    version: config.version || 'latest',
+    version:
+      config.version || GithubContainerVersionsManager.data.curr,
     id: config.id,
     info: undefined,
     port: config.port || '8080',
@@ -469,8 +474,18 @@ export async function createContainer(config: {
       waitForReady();
     },
     async build(options) {
+      console.log('build', self.status)
       if (await fs.exist('Dockerfile', true)) {
         await fs.deleteFile('Dockerfile');
+      }
+      let additionalArgs: string[] = [];
+      if (self.status !== 'safe-mode') {
+        additionalArgs = [
+          'COPY events /app/events',
+          'COPY functions /app/functions',
+          'COPY jobs /app/jobs',
+          'COPY plugins /app/plugins',
+        ];
       }
       await fs.save(
         'Dockerfile',
@@ -481,10 +496,7 @@ export async function createContainer(config: {
           '',
           'WORKDIR /app',
           '',
-          'COPY events /app/events',
-          'COPY functions /app/functions',
-          'COPY jobs /app/jobs',
-          'COPY plugins /app/plugins',
+          ...additionalArgs,
           'COPY uploads /app/uploads',
           'COPY logs /app/logs',
           'COPY bcms.config.js /app/bcms.config.js',
