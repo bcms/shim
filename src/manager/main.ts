@@ -18,6 +18,7 @@ import { Docker } from '@banez/docker';
 import { Service } from '../services';
 import { createContainer } from './container';
 import { createNginx } from './nginx';
+import { GithubContainerVersionsManager } from '../util';
 
 export const Manager: {
   m: ManagerType;
@@ -42,6 +43,15 @@ async function init() {
   const fs = useFS({
     base: path.join(process.cwd()),
   });
+  /**
+   * Pull container versions
+   */
+  await GithubContainerVersionsManager.update();
+  /**
+   * Check if storage path file exists. If it does, take
+   * specified path from the file. This is useful for
+   * custom configurations.
+   */
   if (await fs.exist(['storage', 'storage-path.txt'], true)) {
     ShimConfig.storagePathOnHost = (
       await fs.readString(['storage', 'storage-path.txt'])
@@ -49,7 +59,6 @@ async function init() {
       .replace(/ /g, '')
       .replace(/\n/g, '');
   }
-  console.log(ShimConfig.storagePathOnHost);
   let nginx: Nginx;
 
   Manager.m = {
@@ -159,7 +168,7 @@ async function init() {
           return false;
         } else {
           c.err = '';
-          c.target.setStatus('active');
+          c.target.setStatus('restarting');
           logger.info(
             'restart',
             `Container "${cont.name}" restarted.`,
@@ -192,7 +201,7 @@ async function init() {
           return false;
         } else {
           c.err = '';
-          c.target.setStatus('active');
+          c.target.setStatus('starting');
           logger.info('start', `Container "${cont.name}" started.`);
         }
         logger.info('start', `Success ${cont.name}`);
@@ -251,7 +260,7 @@ async function init() {
           return false;
         } else {
           c.err = '';
-          c.target.setStatus('active');
+          c.target.setStatus('running');
           logger.info('run', `Container "${cont.name}" started.`);
         }
         return true;
@@ -260,22 +269,26 @@ async function init() {
   };
 
   async function updateContainerVersions(): Promise<void> {
+    await GithubContainerVersionsManager.update();
     for (const contId in containers) {
       const cont = containers[contId];
-
       if (Service.cloudConnection.isConnected(contId)) {
         try {
-          const result = await Service.cloudConnection.send<{
-            version: string;
-          }>(contId, '/version', {});
+          const versions = GithubContainerVersionsManager.data;
+          let version = cont.target.version;
+          if (versions.probes.find((e) => e === cont.target.id)) {
+            version = versions.next;
+          } else {
+            version = versions.curr;
+          }
           logger.info(
             'Container version' + cont.target.id,
-            `[c_${cont.target.version}, n_${result.version}]`,
+            `[c_${cont.target.version}, n_${version}]`,
           );
-          if (result.version !== cont.target.version) {
-            await cont.target.update({ version: result.version });
-            await cont.target.build();
-            await cont.target.run();
+          if (version !== cont.target.version) {
+            await cont.target.update({ version });
+            await Manager.m.container.build(cont.target.id);
+            await Manager.m.container.run(cont.target.id);
           }
         } catch (error) {
           logger.warn('updateContainerVersion', { cont, error });
@@ -327,7 +340,10 @@ async function init() {
           }
         }
         result.plugins = plugins;
-        await containers[cont.id].target.update(result);
+        await containers[cont.id].target.update({
+          ...result,
+          version: undefined,
+        });
         await containers[cont.id].target.build();
         await containers[cont.id].target.run({
           waitFor: 1000,
@@ -361,7 +377,7 @@ async function init() {
     for (const contId in containers) {
       const cont = containers[contId];
       if (cont.target.ready) {
-        if (cont.target.status === 'active') {
+        if (cont.alive) {
           if (await cont.target.checkHealth()) {
             cont.aliveFails = 0;
             cont.alive = true;
@@ -373,8 +389,8 @@ async function init() {
             }
           }
         }
-        if (!cont.alive) {
-          if (cont.target.status === 'active') {
+        else {
+          if (cont.target.status === 'running') {
             if (cont.target.previousStatus === 'restarting') {
               await toSafe(contId);
             } else {
@@ -383,6 +399,7 @@ async function init() {
                 `Restarting "${contId}" because of check health issue.`,
               );
               await Manager.m.container.restart(contId);
+              cont.target.setStatus('running');
             }
           } else if (cont.target.status === 'unknown') {
             await Manager.m.container.build(contId);
@@ -446,7 +463,10 @@ async function init() {
     logger.warn('checkInstances', `Starting safe mode for ${contId}`);
     inst.safe = true;
     if (await Manager.m.container.remove(contId)) {
+      inst.target.setStatus('safe-mode');
+      await Manager.m.container.build(contId);
       await Manager.m.container.run(contId);
+      inst.alive = true;
       inst.target.previousStatus = 'down-to-error';
     } else {
       inst.target.setStatus('down-to-error');
@@ -562,7 +582,7 @@ async function init() {
       }, 60000);
     } else {
       for (const contId in containers) {
-        containers[contId].target.setStatus('active');
+        containers[contId].target.setStatus('running');
         containers[contId].alive = true;
       }
       setInterval(async () => {
