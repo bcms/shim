@@ -1,10 +1,11 @@
 export type CloudInstanceStatus =
-  | 'active'
+  | 'running'
   | 'starting'
   | 'down'
   | 'down-to-error'
   | 'unknown'
-  | 'restarting';
+  | 'restarting'
+  | 'safe-mode';
 
 export interface CloudInstanceDomain {
   name: string;
