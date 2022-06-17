@@ -21,5 +21,5 @@ export const ShimConfig: ShimConfigType = {
       : 1300,
   },
   storagePathOnHost:
-    process.env.BCMS_STORAGE_PATH_ON_HOST || '/app/storage',
+    process.env.BCMS_STORAGE_PATH_ON_HOST || '/var/lib/bcms/storage',
 };
