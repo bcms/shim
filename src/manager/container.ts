@@ -474,7 +474,7 @@ export async function createContainer(config: {
       waitForReady();
     },
     async build(options) {
-      console.log('build', self.status)
+      console.log('build', self.status);
       if (await fs.exist('Dockerfile', true)) {
         await fs.deleteFile('Dockerfile');
       }
@@ -662,19 +662,20 @@ export async function createContainer(config: {
   }
   await self.createSecret();
   {
-    const createDirs = [
-      'plugins',
-      'events',
-      'jobs',
-      'logs',
-      'uploads',
-    ];
+    const createDirs = ['plugins', 'events', 'jobs'];
     for (let i = 0; i < createDirs.length; i++) {
       const dir = createDirs[i];
       if (await fs.exist(dir)) {
         await fs.deleteDir(dir);
       }
       await fs.mkdir(dir);
+    }
+    const createDirsOnlyIfNotAvailable = ['uploads', 'logs'];
+    for (let i = 0; i < createDirsOnlyIfNotAvailable.length; i++) {
+      const dir = createDirsOnlyIfNotAvailable[i];
+      if (!fs.exist(dir)) {
+        await fs.mkdir(dir);
+      }
     }
   }
 
