@@ -385,12 +385,12 @@ export async function createContainer(config: {
             exo,
           });
         } else {
-          waitForReady();
+          await waitForReady();
         }
         return exo;
       }
       await Docker.container.start(self.name, options);
-      waitForReady();
+      await waitForReady();
     },
     async stop(options) {
       self.ready = false;
@@ -467,14 +467,13 @@ export async function createContainer(config: {
             exo,
           });
         }
-        waitForReady();
+        await waitForReady();
         return exo;
       }
       await Docker.container.restart(self.name, options);
-      waitForReady();
+      await waitForReady();
     },
     async build(options) {
-      console.log('build', self.status);
       if (await fs.exist('Dockerfile', true)) {
         await fs.deleteFile('Dockerfile');
       }
@@ -634,7 +633,7 @@ export async function createContainer(config: {
           exo,
         });
       }
-      waitForReady();
+      await waitForReady();
       // await Docker.container.run({
       //   args,
       //   onChunk: options ? options.onChunk : ChildProcess.onChunkHelper(exo),
