@@ -115,7 +115,8 @@ export const CloudController = createController<Setup>({
                 thingsToUpdate.functions ||
                 thingsToUpdate.jobs ||
                 thingsToUpdate.plugins ||
-                thingsToUpdate.deps
+                thingsToUpdate.deps ||
+                thingsToUpdate.env
               ) {
                 await Manager.m.container.build(iid);
                 await Manager.m.container.run(iid);

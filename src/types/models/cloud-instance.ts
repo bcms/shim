@@ -63,6 +63,11 @@ export interface CloudInstancePlugin {
   buffer?: Buffer;
 }
 
+export interface CloudInstanceEnv {
+  name: string;
+  value: string;
+}
+
 export interface CloudInstanceData {
   domains: CloudInstanceDomain[];
   functions: CloudInstanceFJE[];
@@ -71,6 +76,7 @@ export interface CloudInstanceData {
   plugins: CloudInstancePlugin[];
   deps?: CloudInstanceDep[];
   proxyConfig?: CloudInstanceProxyConfig[];
+  env: CloudInstanceEnv[];
 }
 
 export interface CloudInstanceUpdateData {
@@ -82,6 +88,7 @@ export interface CloudInstanceUpdateData {
   version?: string;
   deps?: CloudInstanceDep[];
   proxyConfig?: CloudInstanceProxyConfig[];
+  env?: CloudInstanceEnv[];
 }
 export interface CloudInstanceUpdateResult {
   domains: boolean;
@@ -91,6 +98,7 @@ export interface CloudInstanceUpdateResult {
   plugins: boolean;
   deps: boolean;
   proxyConfig: boolean;
+  env: boolean;
 }
 
 export interface CloudInstanceDep {

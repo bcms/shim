@@ -5,6 +5,7 @@ import { ShimConfig } from '../config';
 import type {
   CloudInstanceDep,
   CloudInstanceDomain,
+  CloudInstanceEnv,
   CloudInstanceFJE,
   CloudInstancePlugin,
   CloudInstanceProxyConfig,
@@ -312,6 +313,7 @@ async function init() {
           version: string;
           deps?: CloudInstanceDep[];
           proxyConfig?: CloudInstanceProxyConfig[];
+          env?: CloudInstanceEnv[];
         }>(cont.id, '/data', {});
         const plugins: CloudInstancePlugin[] = [];
         for (let i = 0; i < result.plugins.length; i++) {
@@ -388,8 +390,7 @@ async function init() {
               cont.aliveFails = 0;
             }
           }
-        }
-        else {
+        } else {
           if (cont.target.status === 'running') {
             if (cont.target.previousStatus === 'restarting') {
               await toSafe(contId);

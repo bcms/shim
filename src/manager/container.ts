@@ -119,6 +119,7 @@ export async function createContainer(config: {
       functions: [],
       jobs: [],
       plugins: [],
+      env: [],
     },
     setStatus(status) {
       self.previousStatus = self.status as CloudInstanceStatus;
@@ -204,6 +205,7 @@ export async function createContainer(config: {
         plugins: !!data.plugins,
         deps: !!data.deps,
         proxyConfig: !!data.proxyConfig,
+        env: !!data.env,
       };
       if (data.domains) {
         let newDomains = false;
@@ -359,6 +361,9 @@ export async function createContainer(config: {
       }
       if (data.proxyConfig) {
         self.data.proxyConfig = data.proxyConfig;
+      }
+      if (data.env) {
+        self.data.env = data.env;
       }
       return output;
     },
@@ -560,13 +565,6 @@ export async function createContainer(config: {
           '  ',
         )}`,
       );
-      // if (await Docker.container.exists(self.name)) {
-      //   await self.stop();
-      //   await self.remove();
-      // }
-      // if (await Docker.image.exists(self.name)) {
-      //   await Docker.image.remove(self.name)
-      // }
       if (!options) {
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
@@ -614,6 +612,11 @@ export async function createContainer(config: {
         '--hostname': self.name,
         '--network': 'bcms',
       };
+      if (self.data.env) {
+        args['-e'] = self.data.env.map(
+          (e) => `"${e.name}=${e.value}"`,
+        );
+      }
       args[self.name] = [];
       const exo: ChildProcessOnChunkHelperOutput = {
         err: '',
