@@ -77,6 +77,13 @@ export interface CloudInstanceData {
   deps?: CloudInstanceDep[];
   proxyConfig?: CloudInstanceProxyConfig[];
   env: CloudInstanceEnv[];
+  additionalFiles: CloudInstanceAdditionalFile[];
+}
+
+export interface CloudInstanceAdditionalFile {
+  name: string;
+  path: string;
+  data: string;
 }
 
 export interface CloudInstanceUpdateData {
@@ -89,6 +96,7 @@ export interface CloudInstanceUpdateData {
   deps?: CloudInstanceDep[];
   proxyConfig?: CloudInstanceProxyConfig[];
   env?: CloudInstanceEnv[];
+  additionalFiles?: CloudInstanceAdditionalFile[];
 }
 export interface CloudInstanceUpdateResult {
   domains: boolean;
@@ -99,6 +107,7 @@ export interface CloudInstanceUpdateResult {
   deps: boolean;
   proxyConfig: boolean;
   env: boolean;
+  additionalFiles: boolean;
 }
 
 export interface CloudInstanceDep {

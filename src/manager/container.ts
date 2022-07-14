@@ -120,6 +120,7 @@ export async function createContainer(config: {
       jobs: [],
       plugins: [],
       env: [],
+      additionalFiles: [],
     },
     setStatus(status) {
       self.previousStatus = self.status as CloudInstanceStatus;
@@ -206,6 +207,7 @@ export async function createContainer(config: {
         deps: !!data.deps,
         proxyConfig: !!data.proxyConfig,
         env: !!data.env,
+        additionalFiles: !!data.additionalFiles,
       };
       if (data.domains) {
         let newDomains = false;
@@ -365,6 +367,22 @@ export async function createContainer(config: {
       if (data.env) {
         self.data.env = data.env;
       }
+      if (data.additionalFiles) {
+        self.data.additionalFiles = data.additionalFiles;
+        const basePath = `additional`;
+        if (await fs.exist(basePath)) {
+          await fs.deleteDir(basePath);
+        }
+        await fs.mkdir(basePath);
+
+        for (let i = 0; i < data.additionalFiles.length; i++) {
+          const item = data.additionalFiles[i];
+          await fs.save(
+            [basePath, ...item.path.split('/')],
+            Buffer.from(item.data, 'base64').toString(),
+          );
+        }
+      }
       return output;
     },
     streamLogs({ onChunk }) {
@@ -488,6 +506,7 @@ export async function createContainer(config: {
           'COPY events /app/events',
           'COPY functions /app/functions',
           'COPY jobs /app/jobs',
+          'COPY additional /app/additional',
           'COPY plugins /app/plugins',
         ];
       }
@@ -591,6 +610,7 @@ export async function createContainer(config: {
       ).awaiter;
     },
     async run(options) {
+      self.ready = false;
       {
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
@@ -664,7 +684,7 @@ export async function createContainer(config: {
   }
   await self.createSecret();
   {
-    const createDirs = ['plugins', 'events', 'jobs'];
+    const createDirs = ['plugins', 'events', 'jobs', 'additional'];
     for (let i = 0; i < createDirs.length; i++) {
       const dir = createDirs[i];
       if (await fs.exist(dir)) {
