@@ -261,6 +261,7 @@ async function init() {
           return false;
         } else {
           c.err = '';
+          c.alive = true;
           c.target.setStatus('running');
           logger.info('run', `Container "${cont.name}" started.`);
         }
