@@ -94,6 +94,19 @@ const nConfig = {
 
     client_max_body_size 100M;
 
+    gzip              on;
+    gzip_buffers      16 8k;
+    gzip_comp_level   4;
+    gzip_http_version 1.0;
+    gzip_min_length   1280;
+    gzip_types        text/plain text/css application/x-javascript text/xml application/xml application/xml+rss text/javascript image/x-icon image/bmp;
+    gzip_vary         on;
+
+    add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' blob: data:;";
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options nosniff;
+    add_header Referrer-Policy "no-referrer";
+
     location /api/socket/server {
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
@@ -135,6 +148,21 @@ const nConfig = {
     ssl_certificate_key     /etc/nginx/ssl/@domain/key;
     ssl_ciphers             EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS;
     ssl_protocols           TLSv1.2 TLSv1.3;
+
+    gzip              on;
+    gzip_buffers      16 8k;
+    gzip_comp_level   4;
+    gzip_http_version 1.0;
+    gzip_min_length   1280;
+    gzip_types        text/plain text/css application/x-javascript text/xml application/xml application/xml+rss text/javascript image/x-icon image/bmp;
+    gzip_vary         on;
+
+    add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' blob: data:;";
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options nosniff;
+    add_header Referrer-Policy "no-referrer";
+
 
     location /api/socket/server {
       proxy_http_version 1.1;
