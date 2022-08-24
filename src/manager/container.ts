@@ -627,12 +627,13 @@ export async function createContainer(config: {
           `${ShimConfig.storagePathOnHost}/${self.id}/logs:/app/logs`,
           '/var/run/docker.sock:/var/run/docker.sock',
           `${ShimConfig.storagePathOnHost}/${self.id}/uploads:/app/uploads`,
+          `${ShimConfig.storagePathOnHost}/bcms-share:/bcms-share`,
         ],
         '--name': self.name,
         '--hostname': self.name,
         '--network': 'bcms',
       };
-      if (self.data.env) {
+      if (self.data.env.length > 0) {
         args['-e'] = self.data.env.map(
           (e) => `"${e.name}=${e.value}"`,
         );

@@ -543,7 +543,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
           //   'proxy',
           //   'ssl',
           // )}:/etc/nginx/ssl`,
-          `${ShimConfig.storagePathOnHost}:/storage`,
+          `${ShimConfig.storagePathOnHost}/bcms-share:/bcms-share`,
         ],
         '--network': 'bcms',
         '--name': name,
