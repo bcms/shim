@@ -102,7 +102,7 @@ const nConfig = {
     gzip_types        text/plain text/css application/x-javascript text/xml application/xml application/xml+rss text/javascript image/x-icon image/bmp;
     gzip_vary         on;
 
-    add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' blob: data:;";
+    add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' *.thebcms.com blob: data:;";
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options nosniff;
     add_header Referrer-Policy "no-referrer";
@@ -157,7 +157,7 @@ const nConfig = {
     gzip_types        text/plain text/css application/x-javascript text/xml application/xml application/xml+rss text/javascript image/x-icon image/bmp;
     gzip_vary         on;
 
-    add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' blob: data:;";
+    add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' *.thebcms.com blob: data:;";
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options nosniff;
