@@ -34,6 +34,7 @@ async function init() {
   const logger = useLogger({ name: 'Container manager' });
   const containers: {
     [id: string]: {
+      skipCheck: boolean;
       target: Container;
       alive: boolean;
       aliveFails: number;
@@ -97,6 +98,7 @@ async function init() {
         if (!cont) {
           return true;
         }
+        containers[id].skipCheck = true;
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
           out: '',
@@ -110,9 +112,11 @@ async function init() {
             msg: `Failed to build ${cont.name}`,
             exo,
           });
+          containers[id].skipCheck = false;
           return false;
         }
         logger.info('build', `Success ${cont.name}`);
+        containers[id].skipCheck = false;
         return true;
       },
       async remove(id) {
@@ -150,6 +154,7 @@ async function init() {
         if (!cont) {
           return true;
         }
+        containers[id].skipCheck = true;
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
           out: '',
@@ -166,6 +171,7 @@ async function init() {
             msg: `Failed to restart ${cont.name}`,
             exo,
           });
+          containers[id].skipCheck = false;
           return false;
         } else {
           c.err = '';
@@ -176,6 +182,7 @@ async function init() {
           );
         }
         logger.info('restart', `Success ${cont.name}`);
+        containers[id].skipCheck = false;
         return true;
       },
       async start(id) {
@@ -183,6 +190,7 @@ async function init() {
         if (!cont) {
           return true;
         }
+        containers[id].skipCheck = true;
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
           out: '',
@@ -199,6 +207,7 @@ async function init() {
             msg: `Failed to start ${cont.name}`,
             exo,
           });
+          containers[id].skipCheck = false;
           return false;
         } else {
           c.err = '';
@@ -206,6 +215,7 @@ async function init() {
           logger.info('start', `Container "${cont.name}" started.`);
         }
         logger.info('start', `Success ${cont.name}`);
+        containers[id].skipCheck = false;
         return true;
       },
       async stop(id) {
@@ -242,6 +252,7 @@ async function init() {
         if (!cont) {
           return true;
         }
+        containers[id].skipCheck = true;
         const exo: ChildProcessOnChunkHelperOutput = {
           err: '',
           out: '',
@@ -258,6 +269,7 @@ async function init() {
             msg: `Failed to run ${cont.name}`,
             exo,
           });
+          containers[id].skipCheck = false;
           return false;
         } else {
           c.err = '';
@@ -265,6 +277,7 @@ async function init() {
           c.target.setStatus('running');
           logger.info('run', `Container "${cont.name}" started.`);
         }
+        containers[id].skipCheck = false;
         return true;
       },
     },
@@ -379,7 +392,7 @@ async function init() {
   async function checkInstances() {
     for (const contId in containers) {
       const cont = containers[contId];
-      if (cont.target.ready) {
+      if (cont.target.ready && !cont.skipCheck) {
         if (cont.alive) {
           if (await cont.target.checkHealth()) {
             cont.aliveFails = 0;
@@ -488,6 +501,7 @@ async function init() {
         });
         containers[contId] = {
           alive: false,
+          skipCheck: false,
           aliveFails: 0,
           safe: false,
           err: '',
@@ -529,6 +543,7 @@ async function init() {
           target: await createContainer({
             id: contId,
           }),
+          skipCheck: false,
           alive: false,
           aliveFails: 0,
           safe: false,
