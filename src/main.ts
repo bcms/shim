@@ -7,10 +7,7 @@ import {
 } from '@becomes/purple-cheetah';
 import { createSocket } from '@becomes/purple-cheetah-mod-socket';
 import { ShimConfig } from './config';
-import {
-  CloudController,
-  InstanceController,
-} from './controllers';
+import { CloudController, InstanceController } from './controllers';
 import { createManager } from './manager';
 import { SecurityMiddleware } from './middleware';
 import { DefaultInstanceProxy } from './proxy';
@@ -35,10 +32,7 @@ async function main() {
   updateLogger({ output: `${process.cwd()}/storage/logs` });
   createPurpleCheetah({
     port: process.env.PORT ? parseInt(process.env.PORT) : 1279,
-    controllers: [
-      InstanceController,
-      CloudController,
-    ],
+    controllers: [InstanceController, CloudController],
     middleware: [
       createCorsMiddleware(),
       DefaultInstanceProxy,
@@ -84,6 +78,9 @@ async function main() {
             instanceId: string;
           }>(instanceId, jsonData);
           CloudSocket.open(data.instanceId);
+          socket.on('disconnect', () => {
+            CloudSocket.close(data.instanceId);
+          });
           return {
             createdAt: Date.now(),
             id: socket.id,

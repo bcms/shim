@@ -296,11 +296,11 @@ async function init() {
           } else {
             version = versions.curr;
           }
-          logger.info(
-            'Container version' + cont.target.id,
-            `[c_${cont.target.version}, n_${version}]`,
-          );
           if (version !== cont.target.version) {
+            logger.info(
+              'Container version' + cont.target.id,
+              `[c_${cont.target.version}, n_${version}]`,
+            );
             await cont.target.update({ version });
             await Manager.m.container.build(cont.target.id);
             await Manager.m.container.run(cont.target.id);

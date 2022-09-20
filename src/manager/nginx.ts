@@ -494,9 +494,8 @@ export function createNginx({ manager }: NginxConfig): Nginx {
     },
     async build(options) {
       if (await Docker.container.exists(name)) {
-        await Docker.container.stop(name);
-        await Docker.container.remove(name);
-        await Docker.image.remove(name);
+        await self.stop();
+        await self.remove();
       }
 
       if (!options) {

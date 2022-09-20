@@ -130,79 +130,109 @@ export function createCloudConnectionService(): Module {
     }
     return false;
   }
+  async function conn() {
+    if (!ShimConfig.local) {
+      try {
+        const instIds = Service.license.getInstanceIds();
+        for (let i = 0; i < instIds.length; i++) {
+          const instId = instIds[i];
+
+          let connection = connections[instId];
+          if (!connection) {
+            connections[instId] = {
+              cloud: {
+                connected: false,
+                channel: '',
+                registerAfter: Date.now() - 1000,
+                sendStatsAfter: Date.now() - 1000,
+              },
+              self: {
+                checkAfter: -1000,
+              },
+            };
+          }
+          connection = connections[instId];
+          if (!connection.cloud.connected) {
+            logger.info('conn', `Register to cloud "${instId}" ...`);
+            if (connection.cloud.registerAfter < Date.now()) {
+              if (await register(instId)) {
+                connections[instId].cloud.connected = true;
+                logger.info(
+                  'register',
+                  `Instance "${instId}" successfully registered to the cloud.`,
+                );
+              } else {
+                logger.warn(
+                  'register',
+                  `Instance "${instId}" failed to register to the cloud.`,
+                );
+                connections[instId].cloud.registerAfter =
+                  Date.now() + 10000;
+              }
+            } else {
+              logger.warn('conn', 'Register skip.');
+            }
+          } else {
+            if (connection.cloud.sendStatsAfter < Date.now()) {
+              const inst = Manager.m.container.findById(instId);
+              if (inst) {
+                if (
+                  !(await sendStats(
+                    inst,
+                    connections[instId].cloud.channel,
+                  ))
+                ) {
+                  logger.warn(
+                    'connection',
+                    `Connection failed for "${instId}".`,
+                  );
+                  connections[instId].cloud.connected = false;
+                  connections[instId].cloud.registerAfter =
+                    Date.now() + 10000;
+                } else {
+                  connections[instId].cloud.sendStatsAfter =
+                    Date.now() + 5000;
+                }
+              } else {
+                logger.warn(
+                  'conn',
+                  `Failed to find instance "${instId}"`,
+                );
+              }
+            }
+            // TODO: check instance state
+          }
+        }
+      } catch (error) {
+        logger.error('connect', error);
+      }
+      // setTimeout(async () => {
+      //   await Service.cloudConnection.connect();
+      // }, 3000);
+    }
+  }
 
   return {
     name: 'Create connection service',
     initialize({ next }) {
+      let inLoop = false;
+      let connect = false;
+      setInterval(async () => {
+        if (!inLoop && connect) {
+          inLoop = true;
+          await Service.cloudConnection.connect();
+          inLoop = false;
+        }
+      }, 2000);
       Service.cloudConnection = {
         http,
         async connect() {
-          if (!ShimConfig.local) {
-            const instIds = Service.license.getInstanceIds();
-            for (let i = 0; i < instIds.length; i++) {
-              const instId = instIds[i];
-
-              let connection = connections[instId];
-              if (!connection) {
-                connections[instId] = {
-                  cloud: {
-                    connected: false,
-                    channel: '',
-                    registerAfter: Date.now() - 1000,
-                    sendStatsAfter: Date.now() - 1000,
-                  },
-                  self: {
-                    checkAfter: -1000,
-                  },
-                };
-              }
-              connection = connections[instId];
-              if (!connection.cloud.connected) {
-                if (connection.cloud.registerAfter < Date.now()) {
-                  if (await register(instId)) {
-                    connections[instId].cloud.connected = true;
-                    logger.info(
-                      'register',
-                      `Instance "${instId}" successfully registered to the cloud.`,
-                    );
-                  } else {
-                    logger.warn(
-                      'register',
-                      `Instance "${instId}" failed to register to the cloud.`,
-                    );
-                    connections[instId].cloud.registerAfter =
-                      Date.now() + 10000;
-                  }
-                }
-              } else {
-                if (connection.cloud.sendStatsAfter < Date.now()) {
-                  const inst = Manager.m.container.findById(instId);
-                  if (inst) {
-                    if (
-                      !(await sendStats(
-                        inst,
-                        connections[instId].cloud.channel,
-                      ))
-                    ) {
-                      logger.warn(
-                        'connection',
-                        `Connection failed for "${instId}".`,
-                      );
-                      connections[instId].cloud.connected = false;
-                      connections[instId].cloud.registerAfter =
-                        Date.now() + 10000;
-                    } else {
-                      connections[instId].cloud.sendStatsAfter =
-                        Date.now() + 5000;
-                    }
-                  }
-                }
-                // TODO: check instance state
-              }
-            }
-            setTimeout(async () => {
-              await Service.cloudConnection.connect();
-            }, 3000);
+          if (!connect) {
+            connect = true;
+            await conn();
+            setInterval(async () => {
+              await conn();
+            }, 2000);
           }
         },
         isConnected(instanceId) {

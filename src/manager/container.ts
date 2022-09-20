@@ -696,7 +696,7 @@ export async function createContainer(config: {
     const createDirsOnlyIfNotAvailable = ['uploads', 'logs'];
     for (let i = 0; i < createDirsOnlyIfNotAvailable.length; i++) {
       const dir = createDirsOnlyIfNotAvailable[i];
-      if (!fs.exist(dir)) {
+      if (!(await fs.exist(dir))) {
         await fs.mkdir(dir);
       }
     }
