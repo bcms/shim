@@ -211,6 +211,7 @@ export async function createContainer(config: {
       };
       if (data.domains) {
         let newDomains = false;
+        let updateDomains = false;
         const removeDomains = false;
         if (self.data.domains.length !== data.domains.length) {
           output.domains = true;
@@ -222,6 +223,19 @@ export async function createContainer(config: {
               const selfDomain = self.data.domains[j];
               if (domain.name === selfDomain.name) {
                 found = true;
+                if (domain.proxyConfig !== selfDomain.proxyConfig) {
+                  updateDomains = true;
+                }
+                if (domain.ssl) {
+                  if (!selfDomain.ssl) {
+                    updateDomains = true;
+                  } else if (
+                    domain.ssl.crt !== selfDomain.ssl.crt ||
+                    domain.ssl.key !== selfDomain.ssl.key
+                  ) {
+                    updateDomains = true;
+                  }
+                }
                 break;
               }
             }
@@ -230,7 +244,21 @@ export async function createContainer(config: {
               break;
             }
           }
-          if (newDomains || removeDomains) {
+          for (let i = 0; i < self.data.domains.length; i++) {
+            const selfDomain = self.data.domains[i];
+            let found = false;
+            for (let j = 0; j < data.domains.length; j++) {
+              const domain = data.domains[j];
+              if (domain.name === selfDomain.name) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              break;
+            }
+          }
+          if (newDomains || removeDomains || updateDomains) {
             output.domains = true;
           }
         }

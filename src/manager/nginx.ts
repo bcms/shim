@@ -107,6 +107,8 @@ const nConfig = {
     add_header X-Content-Type-Options nosniff;
     add_header Referrer-Policy "no-referrer";
 
+    @proxy-config
+
     location /api/socket/server {
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
@@ -163,6 +165,7 @@ const nConfig = {
     add_header X-Content-Type-Options nosniff;
     add_header Referrer-Policy "no-referrer";
 
+    @proxy-config
 
     location /api/socket/server {
       proxy_http_version 1.1;
@@ -196,10 +199,12 @@ function getConfig(data: {
   type: 'http' | 'https';
   domain: string;
   ip: string;
+  proxyConfig: string;
 }): string {
   return nConfig[data.type]
     .replace(/@domain/g, data.domain)
-    .replace(/@bcms-instance-ip/g, data.ip);
+    .replace(/@bcms-instance-ip/g, data.ip)
+    .replace(/@proxy-config/g, data.proxyConfig);
 }
 
 export function createNginx({ manager }: NginxConfig): Nginx {
@@ -236,6 +241,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
                         .IPAddress
                     : '10.20.30.1',
                 type: 'http',
+                proxyConfig: '',
               }),
             );
           } else {
@@ -264,6 +270,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
                           .IPAddress
                       : '10.20.30.1',
                   type: 'https',
+                  proxyConfig: domain.proxyConfig || '',
                 }),
               );
             } else {
@@ -279,6 +286,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
                           .IPAddress
                       : '10.20.30.1',
                   type: 'http',
+                  proxyConfig: domain.proxyConfig || '',
                 }),
               );
             }

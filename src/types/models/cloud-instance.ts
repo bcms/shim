@@ -13,6 +13,7 @@ export interface CloudInstanceDomain {
     key: string;
     crt: string;
   };
+  proxyConfig?: string;
 }
 
 export interface CloudInstanceStats {
