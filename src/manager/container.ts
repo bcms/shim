@@ -371,7 +371,7 @@ export async function createContainer(config: {
             tag: item.tag,
           });
           if (item.active && item.buffer) {
-            await fs.save([basePath, item.id], item.buffer);
+            await fs.save([basePath, item.id + '.tgz'], item.buffer);
           }
         }
       }
