@@ -6,7 +6,7 @@ import type {
   CloudInstanceDep,
   CloudInstanceDomain,
   CloudInstanceEnv,
-  CloudInstanceFJE,
+  CloudInstanceFJEWithCode,
   CloudInstancePlugin,
   CloudInstanceProxyConfig,
   Container,
@@ -320,9 +320,9 @@ async function init() {
       try {
         const result = await Service.cloudConnection.send<{
           domains: CloudInstanceDomain[];
-          events: CloudInstanceFJE[];
-          functions: CloudInstanceFJE[];
-          job: CloudInstanceFJE[];
+          events: CloudInstanceFJEWithCode[];
+          functions: CloudInstanceFJEWithCode[];
+          job: CloudInstanceFJEWithCode[];
           plugins: CloudInstancePlugin[];
           version: string;
           deps?: CloudInstanceDep[];

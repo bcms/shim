@@ -11,7 +11,7 @@ import { Manager } from '../manager';
 import { Service } from '../services';
 import type {
   CloudInstanceDomain,
-  CloudInstanceFJE,
+  CloudInstanceFJEWithCode,
   CloudInstancePlugin,
   SecurityObject,
 } from '../types';
@@ -92,9 +92,9 @@ export const CloudController = createController<Setup>({
         {
           payload: {
             domains: CloudInstanceDomain[];
-            functions: CloudInstanceFJE[];
-            events: CloudInstanceFJE[];
-            jobs: CloudInstanceFJE[];
+            functions: CloudInstanceFJEWithCode[];
+            events: CloudInstanceFJEWithCode[];
+            jobs: CloudInstanceFJEWithCode[];
             plugins: CloudInstancePlugin[];
           };
           iid: string;

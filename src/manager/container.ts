@@ -274,13 +274,9 @@ export async function createContainer(config: {
 
         for (let i = 0; i < data.functions.length; i++) {
           const item = data.functions[i];
-          self.data.functions.push({
-            hash: item.hash,
-            name: item.name,
-            type: item.type,
-          });
+          self.data.functions.push(item);
           await fs.save(
-            [basePath, `${item.name}.js`],
+            [basePath, `${item._id}.js`],
             Buffer.from(item.code as string, 'base64').toString(),
           );
         }
@@ -295,13 +291,9 @@ export async function createContainer(config: {
 
         for (let i = 0; i < data.events.length; i++) {
           const item = data.events[i];
-          self.data.events.push({
-            hash: item.hash,
-            name: item.name,
-            type: item.type,
-          });
+          self.data.events.push(item);
           await fs.save(
-            [basePath, `${item.name}.js`],
+            [basePath, `${item._id}.js`],
             Buffer.from(item.code as string, 'base64').toString(),
           );
         }
@@ -316,13 +308,9 @@ export async function createContainer(config: {
 
         for (let i = 0; i < data.jobs.length; i++) {
           const item = data.jobs[i];
-          self.data.jobs.push({
-            hash: item.hash,
-            name: item.name,
-            type: item.type,
-          });
+          self.data.jobs.push(item);
           await fs.save(
-            [basePath, `${item.name}.js`],
+            [basePath, `${item._id}.js`],
             Buffer.from(item.code as string, 'base64').toString(),
           );
         }
@@ -681,7 +669,7 @@ export async function createContainer(config: {
       });
       if (exo.err) {
         logger.error('run', {
-          msg: 'Failed to run bcms-proxy',
+          msg: 'Failed to run bcms-instance',
           exo,
         });
       }
