@@ -32,11 +32,25 @@ export enum CloudInstanceFJEType {
   EVENT = 'E',
 }
 
+// export interface CloudInstanceFJE {
+//   type: CloudInstanceFJEType;
+//   hash: string;
+//   name: string;
+//   code?: string;
+// }
+
 export interface CloudInstanceFJE {
+  _id: string;
+  createdAt: number;
+  updatedAt: number;
+  instanceId: string;
   type: CloudInstanceFJEType;
-  hash: string;
+  external?: boolean;
   name: string;
-  code?: string;
+}
+
+export interface CloudInstanceFJEWithCode extends CloudInstanceFJE {
+  code: string;
 }
 
 // eslint-disable-next-line no-shadow
@@ -71,9 +85,9 @@ export interface CloudInstanceEnv {
 
 export interface CloudInstanceData {
   domains: CloudInstanceDomain[];
-  functions: CloudInstanceFJE[];
-  jobs: CloudInstanceFJE[];
-  events: CloudInstanceFJE[];
+  functions: CloudInstanceFJEWithCode[];
+  jobs: CloudInstanceFJEWithCode[];
+  events: CloudInstanceFJEWithCode[];
   plugins: CloudInstancePlugin[];
   deps?: CloudInstanceDep[];
   proxyConfig?: CloudInstanceProxyConfig[];
@@ -89,9 +103,9 @@ export interface CloudInstanceAdditionalFile {
 
 export interface CloudInstanceUpdateData {
   domains?: CloudInstanceDomain[];
-  functions?: CloudInstanceFJE[];
-  jobs?: CloudInstanceFJE[];
-  events?: CloudInstanceFJE[];
+  functions?: CloudInstanceFJEWithCode[];
+  jobs?: CloudInstanceFJEWithCode[];
+  events?: CloudInstanceFJEWithCode[];
   plugins?: CloudInstancePlugin[];
   version?: string;
   deps?: CloudInstanceDep[];
