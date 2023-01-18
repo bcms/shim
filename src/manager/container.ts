@@ -276,7 +276,7 @@ export async function createContainer(config: {
           const item = data.functions[i];
           self.data.functions.push(item);
           await fs.save(
-            [basePath, `${item.name}.js`],
+            [basePath, `${item._id}.js`],
             Buffer.from(item.code as string, 'base64').toString(),
           );
         }
@@ -293,7 +293,7 @@ export async function createContainer(config: {
           const item = data.events[i];
           self.data.events.push(item);
           await fs.save(
-            [basePath, `${item.name}.js`],
+            [basePath, `${item._id}.js`],
             Buffer.from(item.code as string, 'base64').toString(),
           );
         }
@@ -310,7 +310,7 @@ export async function createContainer(config: {
           const item = data.jobs[i];
           self.data.jobs.push(item);
           await fs.save(
-            [basePath, `${item.name}.js`],
+            [basePath, `${item._id}.js`],
             Buffer.from(item.code as string, 'base64').toString(),
           );
         }
