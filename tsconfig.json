@@ -1,19 +1,33 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "CommonJS",
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "strict": true,
     "target": "ESNext",
     "outDir": "./dist",
-    "rootDir": "./src",
-    "incremental": false,
+    "baseUrl": "./",
+    "skipLibCheck": true,
     "importsNotUsedAsValues": "error",
-    "strict": true
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "jsx": "preserve",
+    "paths": {
+      "@cloud/*": ["./src/cloud-types/*"],
+      "@shim": ["./src"],
+      "@shim/*": ["./src/*"]
+    },
+    "lib": ["esnext"]
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist",  "public"]
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "db",
+    "dist",
+    "logs",
+    "uploads",
+    "dist-types",
+    "client"
+  ]
 }

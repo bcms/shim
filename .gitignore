@@ -1,19 +1,17 @@
 # compiled output
 /dist
+/dist-types
 /doc
-/node_modules
+/db
+node_modules
 /typedoc
 .env
 /db.json
-/licenses
-/.idea
-/storage
-/proxy/ssl/**/key
-/proxy/ssl/**/crt
-/proxy/nginx.conf
+/zips
+/.vscode
+/uploads
 /lib
-/tsconfig.tsbuildinfo
-/proxy/nginx.conf
+/src/cloud-types
 
 # Logs
 logs
@@ -45,7 +43,3 @@ lerna-debug.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
-# Local Dev Image
-/local-dev-img
-/local-dev-dist

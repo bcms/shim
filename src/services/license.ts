@@ -1,109 +1,83 @@
-import { useFS, useLogger } from '@becomes/purple-cheetah';
-import type { Module } from '@becomes/purple-cheetah/types';
-import { watch } from 'chokidar';
-import * as path from 'path';
-import { Service } from '.';
-import { ShimConfig } from '../config';
-import type { License } from '../types';
-import { General, Http } from '../util';
+import { createFS } from '@banez/fs';
+import { StringUtility } from '@becomes/purple-cheetah';
 
-export function createLicenseService(): Module {
-  return {
-    name: 'License service',
-    initialize({ next }) {
-      const licenses: { [instanceId: string]: License } = {};
-      if (ShimConfig.local) {
-        next();
-        return;
-      }
-      const logger = useLogger({ name: 'License service' });
-      const watcher = watch(path.join(process.cwd(), 'licenses'));
-      const fs = useFS();
-      const http = !ShimConfig.cloud.domain
-        ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
-        : new Http(
-            ShimConfig.cloud.domain,
-            ShimConfig.cloud.port,
-            '/api/v1/shim',
-          );
+export interface License {
+  list: Array<{
+    buf: Buffer;
+    str: string;
+  }>;
+}
 
-      function add(instId: string, license: string) {
-        const licenseCore = General.string.getTextBetween(
-          license,
+export class LicenseService {
+  private licenses: {
+    [instanceId: string]: License;
+  } = {};
+  private fs = createFS({
+    base: process.cwd(),
+  });
+
+  async load() {
+    const fileNames = await this.fs.readdir('licenses');
+    for (let i = 0; i < fileNames.length; i++) {
+      const fileName = fileNames[i];
+      if (fileName.endsWith('.license')) {
+        const file = await this.fs.readString(['licenses', fileName]);
+        const [instanceId] = fileName.split('.');
+        const core = StringUtility.textBetween(
+          file,
           '---- BEGIN BCMS LICENSE ----\n',
           '\n---- END BCMS LICENSE ----',
         );
-        const licenseParts: string[] = licenseCore.split('\n');
-        if (licenseParts.length !== 20) {
+        const lines = core.split('\n');
+        if (lines.length !== 20) {
           throw Error('Invalid license length.');
+        } else {
+          
         }
-        licenses[instId] = {
-          list: licenseParts.map((e) => {
-            return { str: e, buf: Buffer.from(e, 'base64') };
-          }),
-        };
-      }
-      async function checkLicense(
-        location: string,
-      ): Promise<{ licenseRaw: string; instId: string } | undefined> {
-        const pathParts = location.split('/');
-        const licenseName = pathParts[pathParts.length - 1];
-        if (licenseName.endsWith('.license')) {
-          const instId = licenseName.split('.')[0];
-          const licenseRaw = (await fs.read(location)).toString();
-          try {
-            const res = await http.send<{
-              ok: boolean;
-            }>({
-              path: `/instance/valid/${instId}`,
-              method: 'POST',
-            });
-            if (res.status === 200 && res.data.ok) {
-              add(instId, licenseRaw);
-            }
-            return { licenseRaw, instId };
-          } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error(error);
-            logger.error(
-              'checkLicense',
-              `Invalid license file ${licenseName}`,
-            );
+        const tempLicense: License = {
+          list: lines.map((line) => {
+            return {
+              str: line,
+              buf: Buffer.from(line, 'base64'),
+            };
+          })
+        }
+        try {
+          const res = await Service.cloudConnection.http.send<{
+            ok: boolean;
+          }>({
+            path: '/license/verify',
+            method: 'POST',
+            headers: {
+              iid: instId,
+            },
+            data: {
+              timestamp: Date.now(),
+            },
+          });
+          if (res.status === 200 && res.data.ok) {
+            add(instId, licenseRaw);
           }
+          return { licenseRaw, instId };
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error(error);
+          logger.error(
+            'checkLicense',
+            `Invalid license file ${licenseName}`,
+          );
         }
       }
+    }
+  }
 
-      watcher.on('add', async (location) => {
-        const result = await checkLicense(location);
-        if (result) {
-          add(result.instId, result.licenseRaw);
-        }
-        next();
-      });
-      watcher.on('change', async (location) => {
-        const result = await checkLicense(location);
-        if (result) {
-          add(result.instId, result.licenseRaw);
-        }
-      });
-      watcher.on('unlink', async (location) => {
-        if (location.endsWith('.license')) {
-          const parts = location.split('/');
-          const instId = parts[parts.length - 1].split('.')[0];
-          if (instId) {
-            delete licenses[instId];
-          }
-        }
-      });
+  get(instanceId: string): License | null {
+    return this.licenses[instanceId] || null;
+  }
 
-      Service.license = {
-        getInstanceIds() {
-          return Object.keys(licenses);
-        },
-        get(instanceId) {
-          return licenses[instanceId];
-        },
-      };
-    },
-  };
+  getInstanceIds() {
+    return Object.keys(this.licenses);
+  }
+
+  private checkLicense;
 }

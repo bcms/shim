@@ -1,26 +1,67 @@
-const path = require('path');
-const { createFS } = require('@banez/fs');
 const { createConfig, createTasks } = require('@banez/npm-tool');
+const { createFS } = require('@banez/fs');
 const { ChildProcess } = require('@banez/child_process');
 
 const fs = createFS({
-  base: process.cwd(),
+  base: __dirname,
 });
 
 module.exports = createConfig({
   bundle: {
     extend: [
       {
-        title: 'Update package.json',
-        async task() {
+        title: 'Fix imports',
+        task: async () => {
+          const filePaths = await fs.fileTree(['dist'], '');
+          for (let i = 0; i < filePaths.length; i++) {
+            const filePath = filePaths[i];
+            if (filePath.path.abs.endsWith('.js') || filePath.path.abs.endsWith('.d.ts')) {
+              let replacer = './';
+              if (filePath.path.rel !== '') {
+                const depth = filePath.path.rel.split('/').length;
+                replacer = new Array(depth)
+                  .fill('..')
+                  .slice(1)
+                  .join('/');
+              }
+              const file = await fs.readString(filePath.path.abs);
+              const fileFixed = file.replace(
+                /@shim/g,
+                replacer,
+              );
+              if (file !== fileFixed) {
+                await fs.save(filePath.path.abs, fileFixed);
+              }
+            }
+          }
+        },
+      },
+      {
+        title: 'Create types output',
+        task: async () => {
+          const fileTree = await fs.fileTree(['dist'], '');
+          if (await fs.exist('dist-types')) {
+            await fs.deleteDir('dist-types');
+          }
+          await fs.mkdir('dist-types');
+          for (let i = 0; i < fileTree.length; i++) {
+            const fileInfo = fileTree[i];
+            if (fileInfo.path.rel.endsWith('.ts')) {
+              await fs.copy(fileInfo.path.abs, [
+                'dist-types',
+                fileInfo.path.rel,
+              ]);
+            }
+          }
           const packageJson = JSON.parse(
-            await fs.readString(['dist', 'package.json']),
+            await fs.readString('package.json'),
           );
-          packageJson.scripts = {
-            start: 'node main.js',
-          };
+          packageJson.name = '@becomes/cms-cloud-types';
+          packageJson.scripts = undefined;
+          packageJson.devDependencies = undefined;
+          packageJson.nodemonConfig = undefined;
           await fs.save(
-            ['dist', 'package.json'],
+            ['dist-types', 'package.json'],
             JSON.stringify(packageJson, null, '  '),
           );
         },
@@ -28,99 +69,57 @@ module.exports = createConfig({
     ],
   },
   custom: {
+    '--precommit': async () => {
+      // await ChildProcess.spawn('npm', ['run', 'lint']);
+      // await ChildProcess.spawn('npm', ['run', 'bundle']);
+    },
+
     '--create-image': async () => {
       await createTasks([
         {
-          title: 'Create lib directory',
-          async task() {
-            await fs.copy('dist', 'lib');
-            await fs.copy('Dockerfile', ['lib', 'Dockerfile']);
-          },
-        },
-        {
-          title: 'Copy proxy config',
-          async task() {
-            await fs.copy('proxy', ['lib', 'proxy']);
-          },
-        },
-        {
-          title: 'Create Docker image',
-          async task() {
-            await ChildProcess.exec(
-              'cd lib && docker build . -t becomes/cms-shim',
-              (type, chunk) => {
-                process[type].write(chunk);
-              },
-            );
-          },
-        },
-        {
-          title: 'Remove lib directory',
-          async task() {
-            await fs.deleteDir('lib');
-          },
-        },
-      ]).run();
-    },
-    '--create-dev-image': async () => {
-      await createTasks([
-        {
-          title: 'Remove local dev dist',
-          async task() {
-            await fs.deleteDir('local-dev-dist');
-          },
-        },
-        {
-          title: 'Copy src',
-          async task() {
-            await fs.copy('src', ['local-dev-dist', 'src']);
-          },
-        },
-        {
-          title: 'Copy assets',
-          async task() {
-            await fs.mkdir(['local-dev-dist', 'license']);
-            const files = [
-              'tsconfig.json',
-              '.eslintrc',
-              '.eslintignore',
-              '.env.dev',
-            ];
-            for (let i = 0; i < files.length; i++) {
-              const file = files[i];
-              await fs.copy(file, ['local-dev-dist', file]);
-            }
-          },
-        },
-        {
-          title: 'Copy package.json.',
+          title: 'Create bundle',
           task: async () => {
-            await fs.copy('package.json', [
-              'local-dev-dist',
-              'package.json',
-            ]);
+            await ChildProcess.spawn('npm', ['run', 'bundle']);
           },
         },
         {
           title: 'Copy Dockerfile',
           task: async () => {
-            await fs.copy('Dockerfile.dev', [
-              'local-dev-dist',
-              'Dockerfile',
-            ]);
+            await fs.copy('Dockerfile', ['dist', 'Dockerfile']);
           },
         },
         {
-          title: 'Create Docker image',
+          title: 'Create docker image',
           task: async () => {
-            await ChildProcess.spawn(
-              'docker',
-              ['build', '.', '-t', 'becomes/cms-shim-local'],
-              {
-                stdio: 'inherit',
-                cwd: path.join(__dirname, 'local-dev-dist'),
-              },
+            const versions = JSON.parse(
+              await fs.readString('container-version.json'),
             );
+            await ChildProcess.spawn('docker', [
+              'tag',
+              '.',
+              '-t',
+              'registry.digitalocean.com/bcms-cloud/backend',
+            ]);
+            await ChildProcess.spawn('docker', [
+              'build',
+              'registry.digitalocean.com/bcms-cloud/backend',
+              `registry.digitalocean.com/bcms-cloud/backend:${versions.v2}`,
+            ]);
+            const [major, minor, fix] = versions.v2
+              .split('.')
+              .map((e) => parseInt(e));
+            fix++;
+            versions.v2 = `${major}.${minor}.${fix}`;
+            await fs.save(
+              'container-version.json',
+              JSON.stringify(versions, null, '  '),
+            );
+          },
+        },
+        {
+          title: 'Remove Dockerfile',
+          task: async () => {
+            await fs.deleteFile(['dist', 'Dockerfile']);
           },
         },
       ]).run();

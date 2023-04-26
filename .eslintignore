@@ -1,5 +1,10 @@
 node_modules
 dist
-/tools.js
-/storage
-/npm-tool.js
+dist-types
+tools.js
+npm-tool.js
+
+/client/uploads
+/client/npm-tool.cjs
+/client/bcms.config.js
+/client/tailwind.config.cjs
