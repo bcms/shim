@@ -1,5 +1,5 @@
 {
-  "name": "@becomesco/shim",
+  "name": "@becomes/shim",
   "version": "2.0.0",
   "description": "",
   "main": "./main.js",
@@ -30,22 +30,24 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/becomesco/cms-cloud-backend.git"
+    "url": "git+https://github.com/bcms/shim.git"
   },
   "keywords": [],
   "author": "Becomes",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/becomesco/cms-cloud-backend/issues"
+    "url": "https://github.com/bcms/shim/issues"
   },
   "dependencies": {
+    "@banez/child_process": "^1.0.3",
+    "@banez/docker": "^1.1.0",
     "@banez/fs": "^1.0.3",
     "@banez/queue": "^1.0.0",
-    "@becomes/purple-cheetah": "^3.6.1",
+    "@becomes/purple-cheetah": "file:pc.tgz",
+    "@becomes/purple-cheetah-mod-fsdb": "^1.4.0",
     "@becomes/purple-cheetah-mod-jwt": "^1.1.0",
     "@becomes/purple-cheetah-mod-socket": "^1.1.0",
-    "express": "^4.17.1",
-    "@banez/child_process": "^1.0.3"
+    "express": "^4.17.1"
   },
   "devDependencies": {
     "@banez/npm-tool": "^1.1.1",

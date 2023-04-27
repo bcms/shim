@@ -1,5 +1,4 @@
 import { createHttpClient } from '@becomes/purple-cheetah';
-import { HTTPException } from '@becomes/purple-cheetah/types';
 import type { ShimSecurityObject } from '@cloud/shim/models';
 import { ShimConfig } from '@shim/config';
 import { Service } from './main';
@@ -26,11 +25,7 @@ export class CloudClient {
     path: string;
     payload: unknown;
   }): Promise<ResponsePayload> {
-    const response = await this.http.send<
-      ShimSecurityObject,
-      unknown,
-      unknown
-    >({
+    const response = await this.http.send<ShimSecurityObject>({
       path: `/conn/${config.channel}${config.path}`,
       method: 'post',
       headers: {
@@ -38,9 +33,6 @@ export class CloudClient {
       },
       data: Service.security.enc(config.instanceId, config.payload),
     });
-    if (response instanceof HTTPException) {
-      throw response;
-    }
     return Service.security.dec(config.instanceId, response.data);
   }
 }

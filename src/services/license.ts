@@ -1,5 +1,6 @@
 import { createFS } from '@banez/fs';
-import { StringUtility } from '@becomes/purple-cheetah';
+import { Logger, StringUtility } from '@becomes/purple-cheetah';
+import { Service } from './main';
 
 export interface License {
   list: Array<{
@@ -15,6 +16,7 @@ export class LicenseService {
   private fs = createFS({
     base: process.cwd(),
   });
+  private logger = new Logger('LicenseService');
 
   async load() {
     const fileNames = await this.fs.readdir('licenses');
@@ -30,42 +32,44 @@ export class LicenseService {
         );
         const lines = core.split('\n');
         if (lines.length !== 20) {
+          this.logger.error(
+            'load',
+            `Invalid format for license "${fileName}"`,
+          );
           throw Error('Invalid license length.');
         } else {
-          
-        }
-        const tempLicense: License = {
-          list: lines.map((line) => {
-            return {
-              str: line,
-              buf: Buffer.from(line, 'base64'),
-            };
-          })
-        }
-        try {
-          const res = await Service.cloudConnection.http.send<{
-            ok: boolean;
-          }>({
-            path: '/license/verify',
-            method: 'POST',
-            headers: {
-              iid: instId,
-            },
-            data: {
-              timestamp: Date.now(),
-            },
-          });
-          if (res.status === 200 && res.data.ok) {
-            add(instId, licenseRaw);
+          const tempLicense: License = {
+            list: lines.map((line) => {
+              return {
+                str: line,
+                buf: Buffer.from(line, 'base64'),
+              };
+            }),
+          };
+          try {
+            const res = await Service.cloudClient.http.send<{
+              ok: boolean;
+            }>({
+              path: '/license/verify',
+              method: 'post',
+              headers: {
+                iid: instanceId,
+              },
+              data: {
+                timestamp: Date.now(),
+              },
+            });
+            if (res.status === 200 && res.data.ok) {
+              this.licenses[instanceId] = tempLicense;
+            }
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error(error);
+            this.logger.error(
+              'load',
+              `Invalid license file ${fileName}`,
+            );
           }
-          return { licenseRaw, instId };
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error(error);
-          logger.error(
-            'checkLicense',
-            `Invalid license file ${licenseName}`,
-          );
         }
       }
     }
@@ -78,6 +82,4 @@ export class LicenseService {
   getInstanceIds() {
     return Object.keys(this.licenses);
   }
-
-  private checkLicense;
 }

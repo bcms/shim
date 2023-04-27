@@ -1,4 +1,7 @@
 export class ShimConfig {
+  static port = process.env.PORT
+    ? parseInt(process.env.PORT, 10)
+    : 8080;
   static local = process.env.BCMS_LOCAL === 'true';
   static manage = process.env.BCMS_MANAGE
     ? process.env.BCMS_MANAGE === 'true'
