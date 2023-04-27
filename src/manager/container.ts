@@ -338,7 +338,7 @@ export async function createContainer(config: {
                 data: Array<number>;
               };
             }>(self.id, '/plugin', {
-              name: item.id,
+              name: item._id,
             });
             if (pluginBuffer.error) {
               logger.warn(
@@ -350,7 +350,10 @@ export async function createContainer(config: {
             }
           }
           self.data.plugins.push({
-            id: item.id,
+            _id: item._id,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+            instanceId: item.instanceId,
             active: item.active,
             buffer: item.buffer,
             version: item.version,
@@ -359,7 +362,7 @@ export async function createContainer(config: {
             tag: item.tag,
           });
           if (item.active && item.buffer) {
-            await fs.save([basePath, item.id + '.tgz'], item.buffer);
+            await fs.save([basePath, item._id + '.tgz'], item.buffer);
           }
         }
       }
@@ -395,7 +398,7 @@ export async function createContainer(config: {
           const item = data.additionalFiles[i];
           await fs.save(
             [basePath, ...item.path.split('/')],
-            Buffer.from(item.data, 'base64').toString(),
+            Buffer.from(item.code, 'base64').toString(),
           );
         }
       }

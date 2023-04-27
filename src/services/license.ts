@@ -20,11 +20,11 @@ export function createLicenseService(): Module {
       const watcher = watch(path.join(process.cwd(), 'licenses'));
       const fs = useFS();
       const http = !ShimConfig.cloud.domain
-        ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
+        ? new Http('cloud.thebcms.com', '443', '/api/v2/shim')
         : new Http(
             ShimConfig.cloud.domain,
             ShimConfig.cloud.port,
-            '/api/v1/shim',
+            '/api/v2/shim',
           );
 
       function add(instId: string, license: string) {

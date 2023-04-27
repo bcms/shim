@@ -29,11 +29,11 @@ interface ServerStats {
 export function createCloudConnectionService(): Module {
   const logger = useLogger({ name: 'ShimConnectionService' });
   const http = !ShimConfig.cloud.domain
-    ? new Http('cloud.thebcms.com', '443', '/api/v1/shim')
+    ? new Http('cloud.thebcms.com', '443', '/api/v2/shim')
     : new Http(
         ShimConfig.cloud.domain,
         ShimConfig.cloud.port,
-        '/api/v1/shim',
+        '/api/v2/shim',
       );
   const connections: {
     [instanceId: string]: {

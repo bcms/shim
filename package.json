@@ -6,8 +6,8 @@
   "types": "./main.d.ts",
   "scripts": {
     "start": "node main.js",
-    "start:local": "env-cmd -f .env.dev node main.js",
-    "dev": "env-cmd -f .env.dev nodemon src/main.ts",
+    "start:local": "node main.js",
+    "dev": "nodemon src/main.ts",
     "build:ts": "tsc -p .",
     "typedoc": "typedoc",
     "bundle": "npm-tool --bundle",

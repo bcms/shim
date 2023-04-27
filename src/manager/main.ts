@@ -3,6 +3,7 @@ import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { Module } from '@becomes/purple-cheetah/types';
 import { ShimConfig } from '../config';
 import type {
+  CloudInstanceAdditionalFile,
   CloudInstanceDep,
   CloudInstanceDomain,
   CloudInstanceEnv,
@@ -324,10 +325,10 @@ async function init() {
           functions: CloudInstanceFJEWithCode[];
           job: CloudInstanceFJEWithCode[];
           plugins: CloudInstancePlugin[];
-          version: string;
-          deps?: CloudInstanceDep[];
-          proxyConfig?: CloudInstanceProxyConfig[];
-          env?: CloudInstanceEnv[];
+          deps: CloudInstanceDep[];
+          proxyConfig: CloudInstanceProxyConfig[];
+          env: CloudInstanceEnv[];
+          additionalFiles: CloudInstanceAdditionalFile[];
         }>(cont.id, '/data', {});
         const plugins: CloudInstancePlugin[] = [];
         for (let i = 0; i < result.plugins.length; i++) {
@@ -341,7 +342,7 @@ async function init() {
               data: Array<number>;
             };
           }>(cont.id, '/plugin', {
-            name: plugin.id,
+            name: plugin._id,
           });
           if (pluginBuffer.error) {
             logger.warn(

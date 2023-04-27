@@ -7,7 +7,14 @@ export type CloudInstanceStatus =
   | 'restarting'
   | 'safe-mode';
 
-export interface CloudInstanceDomain {
+export interface CloudEntity {
+  _id: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CloudInstanceDomain extends CloudEntity {
+  instanceId: string;
   name: string;
   ssl?: {
     key: string;
@@ -39,10 +46,7 @@ export enum CloudInstanceFJEType {
 //   code?: string;
 // }
 
-export interface CloudInstanceFJE {
-  _id: string;
-  createdAt: number;
-  updatedAt: number;
+export interface CloudInstanceFJE extends CloudEntity {
   instanceId: string;
   type: CloudInstanceFJEType;
   external?: boolean;
@@ -68,8 +72,8 @@ export enum CloudInstancePluginType {
    */
   BUNDLE = 'B',
 }
-export interface CloudInstancePlugin {
-  id: string;
+export interface CloudInstancePlugin extends CloudEntity {
+  instanceId: string;
   name: string;
   tag: string;
   type: CloudInstancePluginType;
@@ -78,7 +82,8 @@ export interface CloudInstancePlugin {
   buffer?: Buffer;
 }
 
-export interface CloudInstanceEnv {
+export interface CloudInstanceEnv extends CloudEntity {
+  instanceId: string;
   name: string;
   value: string;
 }
@@ -95,10 +100,11 @@ export interface CloudInstanceData {
   additionalFiles: CloudInstanceAdditionalFile[];
 }
 
-export interface CloudInstanceAdditionalFile {
+export interface CloudInstanceAdditionalFile extends CloudEntity {
+  instanceId: string;
   name: string;
   path: string;
-  data: string;
+  code : string;
 }
 
 export interface CloudInstanceUpdateData {
@@ -125,13 +131,14 @@ export interface CloudInstanceUpdateResult {
   additionalFiles: boolean;
 }
 
-export interface CloudInstanceDep {
+export interface CloudInstanceDep extends CloudEntity {
+  instanceId: string;
   name: string;
   version: string;
 }
 
-export interface CloudInstanceProxyConfig {
-  _id: string;
+export interface CloudInstanceProxyConfig extends CloudEntity {
+  instanceId: string;
   name: string;
   code: string;
 }
