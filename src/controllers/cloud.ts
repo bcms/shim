@@ -9,12 +9,7 @@ import {
 import { ShimConfig } from '../config';
 import { Manager } from '../manager';
 import { Service } from '../services';
-import type {
-  CloudInstanceDomain,
-  CloudInstanceFJEWithCode,
-  CloudInstancePlugin,
-  SecurityObject,
-} from '../types';
+import type { SecurityObject } from '../types';
 import { CloudSocket } from '../util';
 
 interface Setup {
@@ -57,6 +52,10 @@ export const CloudController = createController<Setup>({
     };
   },
   methods({ security }) {
+    const updateBuffer: {
+      [instanceId: string]: NodeJS.Timeout;
+    } = {};
+
     return {
       userUpdate: createControllerMethod<
         {
@@ -91,11 +90,7 @@ export const CloudController = createController<Setup>({
       updateData: createControllerMethod<
         {
           payload: {
-            domains: CloudInstanceDomain[];
-            functions: CloudInstanceFJEWithCode[];
-            events: CloudInstanceFJEWithCode[];
-            jobs: CloudInstanceFJEWithCode[];
-            plugins: CloudInstancePlugin[];
+            sig: string;
           };
           iid: string;
         },
@@ -105,31 +100,34 @@ export const CloudController = createController<Setup>({
         type: 'post',
         preRequestHandler: security(),
         async handler({ payload, iid }) {
-          if (ShimConfig.manage) {
+          if (ShimConfig.manage && payload.sig === 'update') {
             const cont = Manager.m.container.findById(iid);
             if (cont) {
               CloudSocket.close(iid);
-              const thingsToUpdate = await cont.update(payload);
-              if (
-                thingsToUpdate.events ||
-                thingsToUpdate.functions ||
-                thingsToUpdate.jobs ||
-                thingsToUpdate.plugins ||
-                thingsToUpdate.deps ||
-                thingsToUpdate.env
-              ) {
+              if (updateBuffer[iid]) {
+                clearTimeout(updateBuffer[iid]);
+              }
+              updateBuffer[iid] = setTimeout(async () => {
+                await cont.update(
+                  await Service.cloudConnection.getInstanceData(iid),
+                );
+                // const thingsToUpdate = await cont.update(payload);
+                // if (
+                //   thingsToUpdate.events ||
+                //   thingsToUpdate.functions ||
+                //   thingsToUpdate.jobs ||
+                //   thingsToUpdate.plugins ||
+                //   thingsToUpdate.deps ||
+                //   thingsToUpdate.env
+                // ) {
                 await Manager.m.container.build(iid);
                 await Manager.m.container.run(iid);
-              }
-              if (
-                thingsToUpdate.domains ||
-                thingsToUpdate.proxyConfig
-              ) {
+                // }
                 await Manager.m.nginx.updateConfig();
                 await Manager.m.nginx.stop();
                 await Manager.m.nginx.build();
                 await Manager.m.nginx.run();
-              }
+              }, 10000);
             }
           }
           return Service.security.enc(iid, {

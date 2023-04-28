@@ -1,7 +1,27 @@
 import type { HTTPError } from '@becomes/purple-cheetah/types';
 import type { Http } from '../../util';
+import type {
+  CloudInstanceAdditionalFile,
+  CloudInstanceDep,
+  CloudInstanceDomain,
+  CloudInstanceEnv,
+  CloudInstanceFJEWithCode,
+  CloudInstancePlugin,
+  CloudInstanceProxyConfig,
+} from '../models';
 
 export interface CloudConnectionService {
+  getInstanceData(instanceId: string): Promise<{
+    domains: CloudInstanceDomain[];
+    events: CloudInstanceFJEWithCode[];
+    functions: CloudInstanceFJEWithCode[];
+    job: CloudInstanceFJEWithCode[];
+    plugins: CloudInstancePlugin[];
+    deps: CloudInstanceDep[];
+    proxyConfig: CloudInstanceProxyConfig[];
+    env: CloudInstanceEnv[];
+    additionalFiles: CloudInstanceAdditionalFile[];
+  }>;
   connect(): Promise<void>;
   http: Http;
   isConnected(instanceId: string): boolean;

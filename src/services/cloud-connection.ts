@@ -3,6 +3,13 @@ import { useLogger } from '@becomes/purple-cheetah';
 import { ShimConfig } from '../config';
 import type {
   CloudConnection,
+  CloudInstanceAdditionalFile,
+  CloudInstanceDep,
+  CloudInstanceDomain,
+  CloudInstanceEnv,
+  CloudInstanceFJEWithCode,
+  CloudInstancePlugin,
+  CloudInstanceProxyConfig,
   Container,
   SecurityObject,
 } from '../types';
@@ -226,6 +233,47 @@ export function createCloudConnectionService(): Module {
       }, 2000);
       Service.cloudConnection = {
         http,
+        async getInstanceData(instanceId: string) {
+          const result = await Service.cloudConnection.send<{
+            domains: CloudInstanceDomain[];
+            events: CloudInstanceFJEWithCode[];
+            functions: CloudInstanceFJEWithCode[];
+            job: CloudInstanceFJEWithCode[];
+            plugins: CloudInstancePlugin[];
+            deps: CloudInstanceDep[];
+            proxyConfig: CloudInstanceProxyConfig[];
+            env: CloudInstanceEnv[];
+            additionalFiles: CloudInstanceAdditionalFile[];
+          }>(instanceId, '/data', {});
+          const plugins: CloudInstancePlugin[] = [];
+          for (let i = 0; i < result.plugins.length; i++) {
+            const plugin = result.plugins[i];
+            const pluginBuffer = await Service.cloudConnection.send<{
+              error?: {
+                message: string;
+              };
+              plugin?: {
+                type: 'Buffer';
+                data: Array<number>;
+              };
+            }>(instanceId, '/plugin', {
+              name: plugin._id,
+            });
+            if (pluginBuffer.error) {
+              logger.warn(
+                'pullInstanceData',
+                pluginBuffer.error.message,
+              );
+            } else if (pluginBuffer.plugin) {
+              plugins.push({
+                ...plugin,
+                buffer: Buffer.from(pluginBuffer.plugin.data),
+              });
+            }
+          }
+          result.plugins = plugins;
+          return result;
+        },
         async connect() {
           if (!connect) {
             connect = true;

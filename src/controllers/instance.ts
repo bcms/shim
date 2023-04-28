@@ -32,11 +32,13 @@ export const InstanceController = createController({
               user: Const.dev.user,
             };
           }
+          const [userId, otp] = request.body.otp.split('_');
           return await Service.cloudConnection.send(
             instanceId,
             '/user/verify/otp',
             {
-              otp: request.body.otp,
+              userId,
+              otp,
             },
             errorHandler,
           );

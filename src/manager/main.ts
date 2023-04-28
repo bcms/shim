@@ -3,13 +3,6 @@ import { useFS, useLogger } from '@becomes/purple-cheetah';
 import type { Module } from '@becomes/purple-cheetah/types';
 import { ShimConfig } from '../config';
 import type {
-  CloudInstanceAdditionalFile,
-  CloudInstanceDep,
-  CloudInstanceDomain,
-  CloudInstanceEnv,
-  CloudInstanceFJEWithCode,
-  CloudInstancePlugin,
-  CloudInstanceProxyConfig,
   Container,
   Manager as ManagerType,
   Nginx,
@@ -319,44 +312,36 @@ async function init() {
   ): Promise<void> {
     if (Service.cloudConnection.isConnected(cont.id)) {
       try {
-        const result = await Service.cloudConnection.send<{
-          domains: CloudInstanceDomain[];
-          events: CloudInstanceFJEWithCode[];
-          functions: CloudInstanceFJEWithCode[];
-          job: CloudInstanceFJEWithCode[];
-          plugins: CloudInstancePlugin[];
-          deps: CloudInstanceDep[];
-          proxyConfig: CloudInstanceProxyConfig[];
-          env: CloudInstanceEnv[];
-          additionalFiles: CloudInstanceAdditionalFile[];
-        }>(cont.id, '/data', {});
-        const plugins: CloudInstancePlugin[] = [];
-        for (let i = 0; i < result.plugins.length; i++) {
-          const plugin = result.plugins[i];
-          const pluginBuffer = await Service.cloudConnection.send<{
-            error?: {
-              message: string;
-            };
-            plugin?: {
-              type: 'Buffer';
-              data: Array<number>;
-            };
-          }>(cont.id, '/plugin', {
-            name: plugin._id,
-          });
-          if (pluginBuffer.error) {
-            logger.warn(
-              'pullInstanceData',
-              pluginBuffer.error.message,
-            );
-          } else if (pluginBuffer.plugin) {
-            plugins.push({
-              ...plugin,
-              buffer: Buffer.from(pluginBuffer.plugin.data),
-            });
-          }
-        }
-        result.plugins = plugins;
+        const result = await Service.cloudConnection.getInstanceData(
+          cont.id,
+        );
+        // const plugins: CloudInstancePlugin[] = [];
+        // for (let i = 0; i < result.plugins.length; i++) {
+        //   const plugin = result.plugins[i];
+        //   const pluginBuffer = await Service.cloudConnection.send<{
+        //     error?: {
+        //       message: string;
+        //     };
+        //     plugin?: {
+        //       type: 'Buffer';
+        //       data: Array<number>;
+        //     };
+        //   }>(cont.id, '/plugin', {
+        //     name: plugin._id,
+        //   });
+        //   if (pluginBuffer.error) {
+        //     logger.warn(
+        //       'pullInstanceData',
+        //       pluginBuffer.error.message,
+        //     );
+        //   } else if (pluginBuffer.plugin) {
+        //     plugins.push({
+        //       ...plugin,
+        //       buffer: Buffer.from(pluginBuffer.plugin.data),
+        //     });
+        //   }
+        // }
+        // result.plugins = plugins;
         await containers[cont.id].target.update({
           ...result,
           version: undefined,
