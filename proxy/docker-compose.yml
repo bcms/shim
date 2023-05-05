@@ -1,0 +1,7 @@
+version: "3.9"
+services:
+  bcms_shim_proxy:
+    build: .
+    ports:
+      - "80:80"
+      - "3000:3000"

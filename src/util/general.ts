@@ -2,7 +2,7 @@ import * as os from 'os';
 
 export const General = {
   string: {
-    getTextBetween(src: string, begin: string, end: string) {
+    getTextBetween(src: string, begin: string, end: string): string {
       const startIndex = src.indexOf(begin);
       if (startIndex === -1) {
         return '';
@@ -13,7 +13,11 @@ export const General = {
       }
       return src.substring(startIndex + begin.length, endIndex);
     },
-    getAllTextBetween(src: string, begin: string, end: string) {
+    getAllTextBetween(
+      src: string,
+      begin: string,
+      end: string,
+    ): string[] {
       const output: string[] = [];
       const index = {
         begin: src.indexOf(begin, 0),
@@ -50,11 +54,11 @@ export const General = {
     average(): { total: number; idle: number } {
       let totalIdle = 0,
         totalTick = 0;
-      let cpus = os.cpus();
+      const cpus = os.cpus();
       for (let i = 0, len = cpus.length; i < len; i++) {
         const cpu = cpus[i];
         for (const type in cpu.times) {
-          totalTick += cpu.times[type];
+          totalTick += cpu.times[type as never];
         }
         totalIdle += cpu.times.idle;
       }
@@ -77,7 +81,7 @@ export const General = {
       });
     },
   },
-  randomNumber(min: number, max: number) {
+  randomNumber(min: number, max: number): number {
     const r = Math.random() * (max - min) + min;
     return Math.floor(r);
   },

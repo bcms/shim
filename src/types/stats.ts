@@ -1,4 +1,4 @@
-export interface InstanceServerStats {
+export interface ShimStats {
   cpu: {
     cores: number;
     usage: number;

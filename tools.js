@@ -56,7 +56,16 @@ function Tasks(tasks) {
     },
   };
 }
+/**
+ *
+ * @param {string[]} rawArgs
+ */
 function parseArgs(rawArgs) {
+  /**
+   * @type {{
+   *  [key: string]: string,
+   * }}
+   */
   const args = {};
   let i = 2;
   while (i < rawArgs.length) {
@@ -72,22 +81,32 @@ function parseArgs(rawArgs) {
       i = i + 2;
     }
   }
+  /**
+   *
+   * @param {string} name
+   * @param {'string' | 'boolean'} type
+   * @returns {string | boolean}
+   */
+  function getArg(name, type) {
+    if (type === 'string') {
+      return args[name];
+    } else {
+      return args[name] === '' || args[name] === 'true' || false;
+    }
+  }
   return {
-    bundle:
-      args['--bundle'] === '' || args['--bundle'] === 'true' || false,
-    link: args['--link'] === '' || args['--link'] === 'true' || false,
-    unlink:
-      args['--unlink'] === '' || args['--unlink'] === 'true' || false,
-    publish:
-      args['--publish'] === '' ||
-      args['--publish'] === 'true' ||
-      false,
-    build:
-      args['--build'] === '' || args['--build'] === 'true' || false,
-    sudo: args['--sudo'] === '' || args['--sudo'] === 'true' || false,
-    pack: args['--pack'] === '' || args['--pack'] === 'true' || false,
+    bundle: getArg('--bundle', 'boolean'),
+    link: getArg('--link', 'boolean'),
+    unlink: getArg('--unlink', 'boolean'),
+    publish: getArg('--publish', 'boolean'),
+    build: getArg('--build', 'boolean'),
+    sudo: getArg('--sudo', 'boolean'),
+    pack: getArg('--pack', 'boolean'),
+    createImage: getArg('--create-image', 'boolean'),
+    createDevImage: getArg('--create-dev-image', 'boolean'),
   };
 }
+
 async function bundle() {
   const tasks = new Tasks([
     {
@@ -114,7 +133,9 @@ async function bundle() {
         );
         data.devDependencies = undefined;
         data.nodemonConfig = undefined;
-        data.scripts = undefined;
+        data.scripts = {
+          start: 'node main.js',
+        };
         await util.promisify(fs.writeFile)(
           path.join(__dirname, 'dist', 'package.json'),
           JSON.stringify(data, null, '  '),
@@ -228,6 +249,128 @@ async function publish() {
 //     path.join(process.cwd(), 'dist', 'swagger', 'doc.yaml'),
 //   );
 // }
+async function createImage() {
+  const tasks = Tasks([
+    {
+      title: 'Create bundle',
+      task: async () => {
+        await bundle();
+      },
+    },
+    {
+      title: 'Create lib',
+      task: async () => {
+        await fse.copy(
+          path.join(process.cwd(), 'dist'),
+          path.join(process.cwd(), 'lib'),
+        );
+        await fse.copy(
+          path.join(process.cwd(), 'Dockerfile'),
+          path.join(process.cwd(), 'lib', 'Dockerfile'),
+        );
+      },
+    },
+    {
+      title: 'Create docker image',
+      task: async () => {
+        await spawn(
+          'docker',
+          ['build', '.', '-t', 'becomes/cms-shim'],
+          {
+            cwd: path.join(process.cwd(), 'lib'),
+          },
+        );
+      },
+    },
+    {
+      title: 'Remove lib',
+      task: async () => {
+        await fse.remove(path.join(process.cwd(), 'lib'));
+      },
+    },
+  ]);
+  await tasks.run();
+}
+
+async function createDevImage() {
+  const tasks = Tasks([
+    {
+      title: 'Remove dist directory.',
+      task: async () => {
+        await fse.remove(path.join(__dirname, 'local-dev-dist'));
+      },
+    },
+    {
+      title: 'Copy src',
+      task: async () => {
+        await fse.copy(
+          path.join(__dirname, 'src'),
+          path.join(__dirname, 'local-dev-dist', 'src'),
+        );
+      },
+    },
+    {
+      title: 'Copy assets',
+      task: async () => {
+        await fse.mkdirp(
+          path.join(__dirname, 'local-dev-dist', 'license'),
+        );
+        const files = [
+          'tsconfig.json',
+          '.eslintrc',
+          '.eslintignore',
+          '.env.dev',
+        ];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          await fse.copy(
+            path.join(__dirname, file),
+            path.join(__dirname, 'local-dev-dist', file),
+          );
+        }
+      },
+    },
+    {
+      title: 'Copy package.json.',
+      task: async () => {
+        const data = JSON.parse(
+          (
+            await util.promisify(fs.readFile)(
+              path.join(__dirname, 'package.json'),
+            )
+          ).toString(),
+        );
+        await util.promisify(fs.writeFile)(
+          path.join(__dirname, 'local-dev-dist', 'package.json'),
+          JSON.stringify(data, null, '  '),
+        );
+      },
+    },
+    {
+      title: 'Copy Dockerfile',
+      task: async () => {
+        await util.promisify(fs.copyFile)(
+          path.join(__dirname, 'Dockerfile.dev'),
+          path.join(__dirname, 'local-dev-dist', 'Dockerfile'),
+        );
+      },
+    },
+    {
+      title: 'Create Docker image',
+      task: async () => {
+        await spawn(
+          'docker',
+          ['build', '.', '-t', 'becomes/cms-shim-local'],
+          {
+            stdio: 'inherit',
+            cwd: path.join(__dirname, 'local-dev-dist'),
+          },
+        );
+      },
+    },
+  ]);
+  await tasks.run();
+}
 
 async function main() {
   const options = parseArgs(process.argv);
@@ -243,6 +386,10 @@ async function main() {
     // await build();
   } else if (options.pack === true) {
     await pack();
+  } else if (options.createImage) {
+    await createImage();
+  } else if (options.createDevImage) {
+    await createDevImage();
   }
 }
 main().catch((error) => {

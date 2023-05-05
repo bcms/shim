@@ -9,9 +9,10 @@
     "experimentalDecorators": true,
     "target": "ESNext",
     "outDir": "./dist",
-    "baseUrl": "./",
-    "incremental": true,
-    "importsNotUsedAsValues": "error"
+    "rootDir": "./src",
+    "incremental": false,
+    "importsNotUsedAsValues": "error",
+    "strict": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist",  "public"]

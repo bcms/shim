@@ -1,0 +1,1 @@
+# This is a dir for storing SSL cerificates with BCMS Proxy.

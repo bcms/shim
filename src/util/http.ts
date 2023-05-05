@@ -30,11 +30,11 @@ export class Http {
     private basePath?: string,
   ) {}
 
-  setHost(host: { name?: string; port?: string }) {
+  setHost(host: { name?: string; port?: string }): void {
     this.host = host.name;
     this.port = host.port;
   }
-  setBasePath(basePath?: string) {
+  setBasePath(basePath?: string): void {
     this.basePath = basePath;
   }
   async send<T>(config: HttpConfig): Promise<HttpResponse<T>> {
@@ -51,13 +51,17 @@ export class Http {
         method: config.method,
         headers: config.headers ? config.headers : {},
       };
-      let data: string;
+      let data = '';
       if (typeof config.data === 'object') {
         data = JSON.stringify(config.data);
-        requestConfig.headers['content-type'] = 'application/json';
+        (requestConfig.headers as http.OutgoingHttpHeaders)[
+          'content-type'
+        ] = 'application/json';
       } else if (typeof config.data !== 'undefined') {
         data = `${config.data}`;
-        requestConfig.headers['content-type'] = 'text/plain';
+        (requestConfig.headers as http.OutgoingHttpHeaders)[
+          'content-type'
+        ] = 'text/plain';
       }
       const sender =
         config.host && config.host.port
@@ -74,7 +78,7 @@ export class Http {
         });
         res.on('error', (err) => {
           const output: HttpResponseError = {
-            status: res.statusCode,
+            status: res.statusCode || 500,
             err,
             headers: res.headers,
             data:
@@ -88,7 +92,7 @@ export class Http {
         res.on('end', () => {
           if (res.statusCode !== 200) {
             const output: HttpResponseError = {
-              status: res.statusCode,
+              status: res.statusCode || 500,
               err: res,
               headers: res.headers,
               data:
@@ -99,15 +103,17 @@ export class Http {
             reject(output);
             return;
           }
+          const contentType = (
+            res.headers as http.IncomingHttpHeaders
+          )['content-type'];
           resolve({
             status: res.statusCode,
             headers: res.headers,
-            data:
-              res.headers['content-type'].indexOf(
-                'application/json',
-              ) !== -1
+            data: contentType
+              ? contentType.indexOf('application/json') !== -1
                 ? JSON.parse(rawData)
-                : rawData,
+                : rawData
+              : rawData,
           });
         });
       });
