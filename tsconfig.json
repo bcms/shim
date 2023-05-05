@@ -2,8 +2,9 @@
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "skipLibCheck": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
@@ -12,8 +13,10 @@
     "rootDir": "./src",
     "incremental": false,
     "importsNotUsedAsValues": "error",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "strict": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist",  "public"]
+  "exclude": ["node_modules", "dist", "public"]
 }

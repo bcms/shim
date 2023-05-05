@@ -1,9 +1,9 @@
 import {
   createBodyParserMiddleware,
   createCorsMiddleware,
+  createLogger,
   createPurpleCheetah,
   createRequestLoggerMiddleware,
-  updateLogger,
 } from '@becomes/purple-cheetah';
 import { createSocket } from '@becomes/purple-cheetah-mod-socket';
 import { ShimConfig } from './config';
@@ -29,7 +29,6 @@ async function main() {
         ' Please do not forget to remove this flag in production.',
     });
   }
-  updateLogger({ output: `${process.cwd()}/storage/logs` });
   createPurpleCheetah({
     port: process.env.PORT ? parseInt(process.env.PORT) : 1279,
     controllers: [InstanceController, CloudController],
@@ -41,6 +40,12 @@ async function main() {
       SecurityMiddleware,
     ],
     modules: [
+      createLogger({
+        saveToFile: {
+          interval: 5000,
+          output: 'storage/logs',
+        },
+      }),
       createSecurityService(),
       createLicenseService(),
       createCloudConnectionService(),
