@@ -87,6 +87,7 @@ export const CloudController = createController<Setup>({
           });
         },
       }),
+
       updateData: createControllerMethod<
         {
           payload: {
@@ -111,18 +112,8 @@ export const CloudController = createController<Setup>({
                 await cont.update(
                   await Service.cloudConnection.getInstanceData(iid),
                 );
-                // const thingsToUpdate = await cont.update(payload);
-                // if (
-                //   thingsToUpdate.events ||
-                //   thingsToUpdate.functions ||
-                //   thingsToUpdate.jobs ||
-                //   thingsToUpdate.plugins ||
-                //   thingsToUpdate.deps ||
-                //   thingsToUpdate.env
-                // ) {
                 await Manager.m.container.build(iid);
                 await Manager.m.container.run(iid);
-                // }
                 await Manager.m.nginx.updateConfig();
                 await Manager.m.nginx.stop();
                 await Manager.m.nginx.build();
@@ -135,6 +126,7 @@ export const CloudController = createController<Setup>({
           });
         },
       }),
+      
       getLogs: createControllerMethod<
         {
           iid: string;

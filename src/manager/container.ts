@@ -328,7 +328,6 @@ export async function createContainer(config: {
 
         for (let i = 0; i < data.plugins.length; i++) {
           const item = data.plugins[i];
-          console.log(item)
           if (!item.buffer) {
             const pluginBuffer = await Service.cloudConnection.send<{
               error?: {

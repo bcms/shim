@@ -1,12 +1,7 @@
 import * as path from 'path';
 import { useFS, useLogger } from '@becomes/purple-cheetah';
-import type { Module } from '@becomes/purple-cheetah/types';
 import { ShimConfig } from '../config';
-import type {
-  Container,
-  Manager as ManagerType,
-  Nginx,
-} from '../types';
+import type { Container, Manager as ManagerType, Nginx } from '../types';
 import type { ChildProcessOnChunkHelperOutput } from '@banez/child_process/types';
 import { ChildProcess } from '@banez/child_process';
 import { Docker } from '@banez/docker';
@@ -21,7 +16,7 @@ export const Manager: {
   m: undefined as never,
 };
 
-async function init() {
+export async function startContainerManager(): Promise<void> {
   if (ShimConfig.local) {
     return;
   }
@@ -61,18 +56,12 @@ async function init() {
     nginx: undefined as never,
     container: {
       findAll() {
-        return Object.keys(containers).map(
-          (id) => containers[id].target,
-        );
+        return Object.keys(containers).map((id) => containers[id].target);
       },
       findByDomain(domainName) {
         for (const id in containers) {
           const container = containers[id];
-          for (
-            let i = 0;
-            i < container.target.data.domains.length;
-            i++
-          ) {
+          for (let i = 0; i < container.target.data.domains.length; i++) {
             const domain = container.target.data.domains[i];
             if (domain.name === domainName) {
               return container.target;
@@ -170,10 +159,7 @@ async function init() {
         } else {
           c.err = '';
           c.target.setStatus('restarting');
-          logger.info(
-            'restart',
-            `Container "${cont.name}" restarted.`,
-          );
+          logger.info('restart', `Container "${cont.name}" restarted.`);
         }
         logger.info('restart', `Success ${cont.name}`);
         containers[id].skipCheck = false;
@@ -293,7 +279,7 @@ async function init() {
           if (version !== cont.target.version) {
             logger.info(
               'Container version' + cont.target.id,
-              `[c_${cont.target.version}, n_${version}]`,
+              `[c_${cont.target.version}, n_${version}]`
             );
             await cont.target.update({ version });
             await Manager.m.container.build(cont.target.id);
@@ -308,13 +294,11 @@ async function init() {
   async function pullInstanceData(
     cont: Container,
     resolve: (value: boolean) => void,
-    run: number,
+    run: number
   ): Promise<void> {
     if (Service.cloudConnection.isConnected(cont.id)) {
       try {
-        const result = await Service.cloudConnection.getInstanceData(
-          cont.id,
-        );
+        const result = await Service.cloudConnection.getInstanceData(cont.id);
         // const plugins: CloudInstancePlugin[] = [];
         // for (let i = 0; i < result.plugins.length; i++) {
         //   const plugin = result.plugins[i];
@@ -397,7 +381,7 @@ async function init() {
             } else {
               logger.warn(
                 'checkInstances',
-                `Restarting "${contId}" because of check health issue.`,
+                `Restarting "${contId}" because of check health issue.`
               );
               await Manager.m.container.restart(contId);
               cont.target.setStatus('running');
@@ -432,12 +416,7 @@ async function init() {
       shimLog = await fs.readString(['storage', 'logs', logName]);
     }
     if (await fs.exist(['storage', contId, 'logs', logName], true)) {
-      contLog = await fs.readString([
-        'storage',
-        contId,
-        'logs',
-        logName,
-      ]);
+      contLog = await fs.readString(['storage', contId, 'logs', logName]);
     } else {
       const exo: ChildProcessOnChunkHelperOutput = {
         err: '',
@@ -602,29 +581,29 @@ async function init() {
   }
 }
 
-export function createManager(): Module {
-  return {
-    name: 'Container manager',
-    initialize({ next }) {
-      init()
-        .then(() => next())
-        .catch((err) => {
-          // eslint-disable-next-line no-console
-          console.error(err);
+// export function createManager(): Module {
+//   return {
+//     name: 'Container manager',
+//     initialize({ next }) {
+//       init()
+//         .then(() => next())
+//         .catch((err) => {
+//           // eslint-disable-next-line no-console
+//           console.error(err);
 
-          next(
-            Error(
-              JSON.stringify(
-                {
-                  message: err.message,
-                  stack: err.stack,
-                },
-                null,
-                '  ',
-              ),
-            ),
-          );
-        });
-    },
-  };
-}
+//           next(
+//             Error(
+//               JSON.stringify(
+//                 {
+//                   message: err.message,
+//                   stack: err.stack,
+//                 },
+//                 null,
+//                 '  ',
+//               ),
+//             ),
+//           );
+//         });
+//     },
+//   };
+// }
