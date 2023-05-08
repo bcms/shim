@@ -18,7 +18,7 @@ export class GithubContainerVersionsManager {
   );
   static http = createHttpClient({
     name: 'Github backend',
-    basePath: '/becomesco/cms-backend/master',
+    basePath: '/bcms/backend/master',
     host: {
       name: 'raw.githubusercontent.com',
       port: '443',
