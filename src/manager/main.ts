@@ -1,7 +1,11 @@
 import * as path from 'path';
 import { useFS, useLogger } from '@becomes/purple-cheetah';
 import { ShimConfig } from '../config';
-import type { Container, Manager as ManagerType, Nginx } from '../types';
+import type {
+  Container,
+  Manager as ManagerType,
+  Nginx,
+} from '../types';
 import type { ChildProcessOnChunkHelperOutput } from '@banez/child_process/types';
 import { ChildProcess } from '@banez/child_process';
 import { Docker } from '@banez/docker';
@@ -56,12 +60,18 @@ export async function startContainerManager(): Promise<void> {
     nginx: undefined as never,
     container: {
       findAll() {
-        return Object.keys(containers).map((id) => containers[id].target);
+        return Object.keys(containers).map(
+          (id) => containers[id].target,
+        );
       },
       findByDomain(domainName) {
         for (const id in containers) {
           const container = containers[id];
-          for (let i = 0; i < container.target.data.domains.length; i++) {
+          for (
+            let i = 0;
+            i < container.target.data.domains.length;
+            i++
+          ) {
             const domain = container.target.data.domains[i];
             if (domain.name === domainName) {
               return container.target;
@@ -90,7 +100,7 @@ export async function startContainerManager(): Promise<void> {
           onChunk: ChildProcess.onChunkHelper(exo),
           doNotThrowError: true,
         });
-        if (exo.err) {
+        if (exo.err && exo.err.toLowerCase().includes('error')) {
           logger.error('build', {
             msg: `Failed to build ${cont.name}`,
             exo,
@@ -159,7 +169,10 @@ export async function startContainerManager(): Promise<void> {
         } else {
           c.err = '';
           c.target.setStatus('restarting');
-          logger.info('restart', `Container "${cont.name}" restarted.`);
+          logger.info(
+            'restart',
+            `Container "${cont.name}" restarted.`,
+          );
         }
         logger.info('restart', `Success ${cont.name}`);
         containers[id].skipCheck = false;
@@ -279,7 +292,7 @@ export async function startContainerManager(): Promise<void> {
           if (version !== cont.target.version) {
             logger.info(
               'Container version' + cont.target.id,
-              `[c_${cont.target.version}, n_${version}]`
+              `[c_${cont.target.version}, n_${version}]`,
             );
             await cont.target.update({ version });
             await Manager.m.container.build(cont.target.id);
@@ -294,11 +307,13 @@ export async function startContainerManager(): Promise<void> {
   async function pullInstanceData(
     cont: Container,
     resolve: (value: boolean) => void,
-    run: number
+    run: number,
   ): Promise<void> {
     if (Service.cloudConnection.isConnected(cont.id)) {
       try {
-        const result = await Service.cloudConnection.getInstanceData(cont.id);
+        const result = await Service.cloudConnection.getInstanceData(
+          cont.id,
+        );
         // const plugins: CloudInstancePlugin[] = [];
         // for (let i = 0; i < result.plugins.length; i++) {
         //   const plugin = result.plugins[i];
@@ -381,7 +396,7 @@ export async function startContainerManager(): Promise<void> {
             } else {
               logger.warn(
                 'checkInstances',
-                `Restarting "${contId}" because of check health issue.`
+                `Restarting "${contId}" because of check health issue.`,
               );
               await Manager.m.container.restart(contId);
               cont.target.setStatus('running');
@@ -416,7 +431,12 @@ export async function startContainerManager(): Promise<void> {
       shimLog = await fs.readString(['storage', 'logs', logName]);
     }
     if (await fs.exist(['storage', contId, 'logs', logName], true)) {
-      contLog = await fs.readString(['storage', contId, 'logs', logName]);
+      contLog = await fs.readString([
+        'storage',
+        contId,
+        'logs',
+        logName,
+      ]);
     } else {
       const exo: ChildProcessOnChunkHelperOutput = {
         err: '',

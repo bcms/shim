@@ -615,7 +615,7 @@ export async function createContainer(config: {
             onChunk: ChildProcess.onChunkHelper(exo),
           },
         ).awaiter;
-        if (exo.err) {
+        if (exo.err && exo.err.toLowerCase().includes('error')) {
           logger.error('build', {
             msg: 'Failed to build.',
             exo,
@@ -670,7 +670,7 @@ export async function createContainer(config: {
             ? options.onChunk
             : ChildProcess.onChunkHelper(exo),
       });
-      if (exo.err) {
+      if (exo.err && exo.err.toLowerCase().includes('error')) {
         logger.error('run', {
           msg: 'Failed to run bcms-instance',
           exo,

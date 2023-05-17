@@ -518,8 +518,9 @@ export function createNginx({ manager }: NginxConfig): Nginx {
             onChunk: ChildProcess.onChunkHelper(exo),
           },
         ).awaiter;
-        if (exo.err) {
+        if (exo.err && exo.err.toLowerCase().includes('error')) {
           logger.error('build', {
+            exo,
             msg: 'Failed to build bcms-proxy',
           });
         }
@@ -567,7 +568,7 @@ export function createNginx({ manager }: NginxConfig): Nginx {
           doNotThrowError: true,
           onChunk: ChildProcess.onChunkHelper(exo),
         });
-        if (exo.err) {
+        if (exo.err && exo.err.toLowerCase().includes('error')) {
           logger.error('run', {
             msg: `Failed to run ${name}`,
             exo,

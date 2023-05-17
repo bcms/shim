@@ -53,12 +53,13 @@ async function main() {
         path: '/shim/cloud/socket',
         async verifyConnection(socket) {
           try {
-            const instanceId = socket.handshake.query.instanceId as string;
+            const instanceId = socket.handshake.query
+              .instanceId as string;
             const jsonData = JSON.parse(
               Buffer.from(
                 socket.handshake.query.data as string,
-                'hex'
-              ).toString()
+                'hex',
+              ).toString(),
             );
             Service.security.dec<{
               instanceId: string;
@@ -69,9 +70,13 @@ async function main() {
           return true;
         },
         onConnection(socket) {
-          const instanceId = socket.handshake.query.instanceId as string;
+          const instanceId = socket.handshake.query
+            .instanceId as string;
           const jsonData = JSON.parse(
-            Buffer.from(socket.handshake.query.data as string, 'hex').toString()
+            Buffer.from(
+              socket.handshake.query.data as string,
+              'hex',
+            ).toString(),
           );
           const data = Service.security.dec<{
             instanceId: string;
@@ -108,6 +113,9 @@ async function main() {
         ],
       }),
     ],
+    logger: {
+      doNotOverrideProcess: true,
+    },
     onReady() {
       startContainerManager().catch((err) => {
         console.error(err);
