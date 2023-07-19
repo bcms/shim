@@ -1,5 +1,4 @@
 import type { HTTPError } from '@becomes/purple-cheetah/types';
-import type { Http } from '../../util';
 import type {
   CloudInstanceAdditionalFile,
   CloudInstanceDep,
@@ -23,7 +22,6 @@ export interface CloudConnectionService {
     additionalFiles: CloudInstanceAdditionalFile[];
   }>;
   connect(): Promise<void>;
-  http: Http;
   isConnected(instanceId: string): boolean;
   log(data: {
     instanceId: string;

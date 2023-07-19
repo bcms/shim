@@ -11,13 +11,13 @@ import type {
   CloudInstancePlugin,
   CloudInstanceProxyConfig,
   Container,
-  SecurityObject,
 } from '../types';
-import { General, Http, System } from '../util';
+import { General, System } from '../util';
 import { HTTPStatus, Module } from '@becomes/purple-cheetah/types';
 import { getHeapStatistics } from 'v8';
 import { Service } from './main';
 import { Manager } from '../manager';
+import axios from 'axios';
 
 interface ServerStats {
   cpu: {
@@ -35,13 +35,18 @@ interface ServerStats {
 
 export function createCloudConnectionService(): Module {
   const logger = useLogger({ name: 'ShimConnectionService' });
-  const http = !ShimConfig.cloud.domain
-    ? new Http('cloud.thebcms.com', '443', '/api/v2/shim')
-    : new Http(
-        ShimConfig.cloud.domain,
-        ShimConfig.cloud.port,
-        '/api/v2/shim',
-      );
+  const cloudOrigin = !ShimConfig.cloud.domain
+    ? `https://cloud.thebcms.com/api/v2/shim`
+    : `${ShimConfig.cloud.port === '443' ? 'https' : 'http'}://${
+        ShimConfig.cloud.domain
+      }/api/v2/shim`;
+  // const http = !ShimConfig.cloud.domain
+  //   ? new Http('cloud.thebcms.com', '443', '/api/v2/shim')
+  //   : new Http(
+  //       ShimConfig.cloud.domain,
+  //       ShimConfig.cloud.port,
+  //       '/api/v2/shim',
+  //     );
   const connections: {
     [instanceId: string]: {
       cloud: CloudConnection;
@@ -73,8 +78,8 @@ export function createCloudConnectionService(): Module {
     try {
       const stats = await getStats();
       const regObj = Service.security.enc(instanceId, stats);
-      const response = await http.send<SecurityObject>({
-        path: '/register',
+      const response = await axios({
+        url: `${cloudOrigin}/register`,
         method: 'POST',
         data: regObj,
         headers: {
@@ -107,8 +112,8 @@ export function createCloudConnectionService(): Module {
   ): Promise<boolean> {
     try {
       const stats = await getStats();
-      const response = await http.send<SecurityObject>({
-        path: `/conn/${channel}`,
+      const response = await axios({
+        url: `${cloudOrigin}/conn/${channel}`,
         method: 'POST',
         data: Service.security.enc(cont.id, {
           ...stats,
@@ -232,7 +237,6 @@ export function createCloudConnectionService(): Module {
         }
       }, 2000);
       Service.cloudConnection = {
-        http,
         async getInstanceData(instanceId: string) {
           const result = await Service.cloudConnection.send<{
             domains: CloudInstanceDomain[];
@@ -300,8 +304,8 @@ export function createCloudConnectionService(): Module {
             throw Error('Instance is not connected.');
           }
           try {
-            const response = await http.send<SecurityObject>({
-              path: `/conn/${connection.cloud.channel}${uri}`,
+            const response = await axios({
+              url: `${cloudOrigin}/conn/${connection.cloud.channel}${uri}`,
               method: 'POST',
               data: Service.security.enc(instanceId, payload),
               headers: {
@@ -324,8 +328,8 @@ export function createCloudConnectionService(): Module {
           const con = connections[data.instanceId];
           if (con) {
             try {
-              const response = await http.send<SecurityObject>({
-                path: `/conn/${con.cloud.channel}/log`,
+              const response = await axios({
+                url: `${cloudOrigin}/conn/${con.cloud.channel}/log`,
                 method: 'POST',
                 data: Service.security.enc(data.instanceId, data),
                 headers: {
